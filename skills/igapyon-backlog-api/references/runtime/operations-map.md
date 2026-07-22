@@ -11,9 +11,9 @@ The runtime is produced by <https://github.com/igapyon/backlog-api>. Use
 Use the newest versioned runtime under `runtime/`:
 
 ```bash
-node runtime/backlog-api-0.3.0.mjs --version
-node runtime/backlog-api-0.3.0.mjs tools list
-node runtime/backlog-api-0.3.0.mjs trace get_issue
+node runtime/backlog-api-0.3.2.mjs --version
+node runtime/backlog-api-0.3.2.mjs tools list
+node runtime/backlog-api-0.3.2.mjs trace get_issue
 ```
 
 The installed absolute path may differ. Resolve it from the active skill
@@ -24,12 +24,15 @@ directory rather than assuming the current working directory.
 Pass exactly one JSON object:
 
 ```bash
-node runtime/backlog-api-0.3.0.mjs call get_issue --input request.json
+node runtime/backlog-api-0.3.2.mjs call get_issue --input request.json
 ```
 
 Use `--input -` for stdin. Use `--dry-run` for schema validation without a
-Backlog request. Destructive and broad-reset operations also require
-`--confirm-destructive` after user confirmation.
+Backlog request. Calls allow `READ` only by default. Pass the narrow permission
+needed by a mutation only after just-in-time user approval: `--allow CREATE`,
+`--allow UPDATE`, or `--allow DELETE`. Destructive and broad-reset operations
+require a second, separate confirmation before `--confirm-destructive`; the
+mutation approval cannot double as the destructive confirmation.
 
 ## Compatibility Baseline
 

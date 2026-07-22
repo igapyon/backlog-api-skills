@@ -8859,7 +8859,8 @@ function listOperations() {
     name: tool.name,
     description: tool.description,
     toolset: toolset.name,
-    mutationClass: classifyMutation(tool.name)
+    mutationClass: classifyMutation(tool.name),
+    requiredPermission: requiredPermission(tool.name)
   }))).sort((left, right) => compareUtf16(left.name, right.name));
 }
 function resolveTool(backlog, operationName) {
@@ -8883,6 +8884,19 @@ function classifyMutation(operationName) {
   }
   return "read";
 }
+function requiredPermission(operationName) {
+  const mutationClass = classifyMutation(operationName);
+  if (mutationClass === "read") {
+    return "READ";
+  }
+  if (mutationClass === "destructive") {
+    return "DELETE";
+  }
+  if (operationName.startsWith("add_") || operationName === "addDocument") {
+    return "CREATE";
+  }
+  return "UPDATE";
+}
 function compareUtf16(left, right) {
   return left < right ? -1 : left > right ? 1 : 0;
 }
@@ -8900,7 +8914,7 @@ var upstream_tool_mapping_default = {
   target: {
     repository: "backlog-api",
     product: "backlog-api",
-    version: "0.3.0",
+    version: "0.3.2",
     strategy: "published-handler-direct-invocation"
   },
   operations: [
@@ -10734,6 +10748,15 @@ function createBacklogClientProxy(resolveClient) {
 async function runOperation(operation, input, options = {}) {
   const trace = getUpstreamTrace(operation);
   const mutationClass = classifyMutation(operation);
+  const permission = requiredPermission(operation);
+  if (options.allowedPermissions !== void 0 && !options.allowedPermissions.includes(permission)) {
+    return failure(
+      operation,
+      "PERMISSION_REQUIRED",
+      `Operation ${operation} requires ${permission} permission. Add it with --allow ${permission}.`,
+      trace
+    );
+  }
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     return failure(operation, "INVALID_INPUT", "Input must be a JSON object.", trace);
   }
@@ -10829,31 +10852,85 @@ function errorMessage(error) {
 // src/runtime.mjs
 var product = Object.freeze({
   name: "backlog-api",
-  version: "0.3.0",
+  version: "0.3.2",
   upstream: "backlog-mcp-server@0.13.2"
 });
 
 // src/cli.mjs
-var HELP = `backlog-api ${product.version}
+var HELP = `backlog-api ${product.version} \u2014 JSON CLI for Backlog API operations
 
 Usage:
   backlog-api --version
   backlog-api --help
   backlog-api tools list
   backlog-api trace [operation]
-  backlog-api call <operation> [--input <file|->] [--dry-run] [--confirm-destructive]
+  backlog-api call <operation> [--input <file|->] [--allow <permissions>]
+      [--dry-run] [--confirm-destructive]
 
-Input:
-  --input <file>   Read one JSON object from a UTF-8 file.
-  --input -        Read one JSON object from stdin. This is the default for call.
+Commands:
+  --version
+      Print only the product version, for example: ${product.version}
+
+  --help
+      Print this help text. No Backlog credentials are required.
+
+  tools list
+      Print a JSON catalog of available operations. Each entry includes the
+      operation name, description, toolset, and mutation classification.
+
+  trace [operation]
+      Print JSON traceability metadata for all operations or one operation.
+      Use this to relate a Node operation to its upstream implementation.
+
+  call <operation>
+      Read one JSON object, invoke the named operation, and print one JSON
+      result envelope. Use "tools list" to discover operation names.
+
+Call options:
+  --input <file>          Read the request object from a UTF-8 JSON file.
+  --input -               Read the request object from stdin (default).
+  --allow <permissions>   Allow comma-separated CRUD permissions. Defaults to
+                          READ. Values: READ, CREATE, UPDATE, DELETE.
+  --dry-run               Validate and normalize input without invoking Backlog.
+  --confirm-destructive   Explicitly authorize delete_* or broad reset calls.
+
+Input JSON:
+  The input must be exactly one JSON object. Operation arguments are top-level
+  properties. In a multi-organization setup, add "organization" to select a
+  configured Backlog connection; it is not forwarded to the Backlog API.
+
+Output:
+  "tools list", "trace", and "call" write machine-readable JSON to stdout.
+  A call result contains schemaVersion, operation, success, diagnostics,
+  trace, and either result or dryRun/input data. --help and --version are the
+  only plain-text stdout commands. Unexpected CLI errors are written to stderr.
 
 Safety:
-  delete_* and broad notification reset operations require
-  --confirm-destructive in addition to a valid request.
+  Calls allow READ operations only by default. CREATE, UPDATE, and DELETE must
+  be explicitly enabled with --allow. This is a client-side execution policy,
+  not a Backlog account permission.
+
+  delete_* and reset_unread_notification_count require
+  --confirm-destructive when applicable, independently of --allow. DELETE
+  therefore requires both --allow DELETE and --confirm-destructive.
 
 Environment:
-  BACKLOG_DOMAIN and BACKLOG_API_KEY, or the upstream multi-organization
-  BACKLOG_DEFAULT_ORG and BACKLOG_ORG_<NAME>_* variables.
+  BACKLOG_DOMAIN and BACKLOG_API_KEY configure one connection. The upstream
+  BACKLOG_DEFAULT_ORG and BACKLOG_ORG_<NAME>_* variables configure multiple
+  organizations. Metadata commands do not require credentials.
+
+Exit codes:
+  0  Successful metadata command or operation.
+  1  Configuration, confirmation, organization, or Backlog API failure.
+  2  CLI usage error or operation input-schema failure.
+
+Examples:
+  backlog-api tools list
+  backlog-api trace get_issue
+  printf '{"issueKey":"PROJ-1"}\\n' | backlog-api call get_issue
+  backlog-api call get_issue --input request.json --dry-run
+  backlog-api call add_issue --input request.json --allow CREATE
+  backlog-api call delete_issue --input request.json --allow DELETE --confirm-destructive
 `;
 main().catch((error) => {
   process.stderr.write(`${error instanceof Error ? error.message : String(error)}
@@ -10888,10 +10965,20 @@ async function main() {
   }
   if (args[0] === "call" && args[1]) {
     const inputPath = optionValue(args, "--input") ?? "-";
+    let allowedPermissions;
+    try {
+      allowedPermissions = parseAllowedPermissions(optionValue(args, "--allow"));
+    } catch (error) {
+      process.stderr.write(`${error instanceof Error ? error.message : String(error)}
+`);
+      process.exitCode = 2;
+      return;
+    }
     const input = JSON.parse(await readInput(inputPath));
     const result = await runOperation(args[1], input, {
       dryRun: args.includes("--dry-run"),
-      confirmDestructive: args.includes("--confirm-destructive")
+      confirmDestructive: args.includes("--confirm-destructive"),
+      allowedPermissions
     });
     writeJson(result);
     if (!result.success) {
@@ -10914,6 +11001,20 @@ function optionValue(args, name) {
     throw new Error(`${name} requires a value.`);
   }
   return value;
+}
+function parseAllowedPermissions(value) {
+  if (value === void 0) {
+    return ["READ"];
+  }
+  const supported = /* @__PURE__ */ new Set(["READ", "CREATE", "UPDATE", "DELETE"]);
+  const permissions = [...new Set(value.split(",").map((entry) => entry.trim().toUpperCase()))];
+  const invalid = permissions.filter((permission) => !supported.has(permission));
+  if (invalid.length > 0) {
+    throw new Error(
+      `--allow contains unsupported permission(s): ${invalid.join(", ")}. Use READ, CREATE, UPDATE, or DELETE.`
+    );
+  }
+  return permissions;
 }
 async function readInput(inputPath) {
   if (inputPath !== "-") {
