@@ -78,7 +78,8 @@ load it.
 6. If the operation is destructive or broad, obtain a second, separate
    confirmation that names its impact. Do not combine the two approvals.
 7. Apply the safety rules below.
-8. Run `node <runtime> call <operation> --input <json-file>`. Only after the
+8. Run `node <runtime> call <operation> --input <json-file> --verbose` for an
+   actual Backlog API call during the beta period. Only after the
    mutation approval, add its required `--allow CREATE`, `--allow UPDATE`, or
    `--allow DELETE` permission. Add `--confirm-destructive` only after the
    separate destructive confirmation.
@@ -87,7 +88,9 @@ load it.
 10. After a mutation, perform a focused read-back when proportionate.
 
 Use `--dry-run` to validate operation input without calling Backlog. It still
-requires configured client metadata, but it performs no Backlog request.
+requires configured client metadata, but it performs no Backlog request. Use
+`--verbose` with dry-run only when its diagnostic output is useful. Metadata
+commands such as `--version`, `tools list`, and `trace` do not need it.
 
 ## Safety Rules
 
@@ -95,6 +98,9 @@ requires configured client metadata, but it performs no Backlog request.
 - Before every create, update, or delete, obtain just-in-time user approval
   naming the permission class, organization, target, and material change. The
   request that initiated the workflow does not itself satisfy this approval.
+- Treat approval as valid only for the organization, target, operation, and
+  material fields presented to the user. If any of them changes, discard the
+  prior approval and obtain a new one before invoking the CLI.
 - After that first approval, pass only the corresponding `--allow CREATE`,
   `--allow UPDATE`, or `--allow DELETE` permission.
 - Treat every `delete_*` operation, `reset_unread_notification_count`, and any
@@ -108,6 +114,9 @@ requires configured client metadata, but it performs no Backlog request.
 - Do not broaden a mutation across organizations or projects.
 - Do not invent IDs, keys, custom-field IDs, user IDs, or repository names.
 - Do not expose credentials or unrelated tenant data in inputs or summaries.
+- Treat verbose stderr as transient diagnostics. Do not persist it without
+  explicit user approval, and stop if it unexpectedly exposes arguments,
+  credentials, results, organization names, or error bodies.
 - Prefer bounded queries and concise summaries for large results.
 
 Read [references/safety.md](references/safety.md) before destructive or broad
@@ -123,6 +132,13 @@ The runtime writes one JSON envelope to stdout containing:
 - `result` on success
 - structured `diagnostics`
 - `trace` with upstream repository, version, commit, tool, source, and test
+
+With `--verbose`, safe API access events are written separately to stderr as
+`verbose: `-prefixed JSON. Inspect them for operation, method, CRUD permission,
+organization class, start/success/failure state, allowlisted target/result IDs
+or keys, duration, changed field names, pagination, and an available failure
+HTTP status. Do not expect a successful HTTP status or rate-limit values, and
+do not merge these events into the stdout JSON envelope.
 
 Treat a nonzero exit code, `success: false`, configuration failure, validation
 failure, or upstream error diagnostic as a failed operation.

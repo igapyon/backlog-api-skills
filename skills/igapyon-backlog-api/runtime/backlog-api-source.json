@@ -2,18 +2,18 @@
   "schemaVersion": 1,
   "source": {
     "repository": "https://github.com/igapyon/backlog-api",
-    "version": "0.3.2",
-    "tag": "v0.3.2",
-    "commit": "80fef34afae8b38861604cd8e30dd7997a78b2c3",
-    "release": "https://github.com/igapyon/backlog-api/releases/tag/v0.3.2",
+    "version": "0.3.4",
+    "tag": "v0.3.4",
+    "commit": "58b96fd26995bafdee00aa89a8616a711b0563f9",
+    "release": "https://github.com/igapyon/backlog-api/releases/tag/v0.3.4",
     "dirty": false
   },
   "artifact": {
     "origin": "github-release-asset",
-    "file": "backlog-api-0.3.2.mjs",
-    "url": "https://github.com/igapyon/backlog-api/releases/download/v0.3.2/backlog-api-0.3.2.mjs",
-    "sha256": "65b123a53b74d321e201b72d9780c2da67d4a66df582b69805e68c0813abcaa2",
-    "checksumFile": "https://github.com/igapyon/backlog-api/releases/download/v0.3.2/SHA256SUMS"
+    "file": "backlog-api-0.3.4.mjs",
+    "url": "https://github.com/igapyon/backlog-api/releases/download/v0.3.4/backlog-api-0.3.4.mjs",
+    "sha256": "d872523d353504dcb591d5b4094e729b96588b167f5c351bd57354a8b6dd960c",
+    "checksumFile": "https://github.com/igapyon/backlog-api/releases/download/v0.3.4/SHA256SUMS"
   },
   "upstream": {
     "repository": "https://github.com/nulab/backlog-mcp-server",

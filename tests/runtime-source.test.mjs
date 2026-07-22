@@ -11,6 +11,23 @@ const source = JSON.parse(
   fs.readFileSync(path.resolve(runtimeDir, "backlog-api-source.json"), "utf8")
 );
 const runtime = path.resolve(runtimeDir, source.artifact.file);
+const environment = {
+  ...process.env,
+  BACKLOG_DOMAIN: "example.backlog.com",
+  BACKLOG_API_KEY: "test"
+};
+
+function runRuntime(args, input) {
+  return spawnSync(process.execPath, [runtime, ...args], {
+    encoding: "utf8",
+    env: environment,
+    ...(input === undefined ? {} : { input: JSON.stringify(input) })
+  });
+}
+
+function firstDiagnosticCode(execution) {
+  return JSON.parse(execution.stdout).diagnostics?.[0]?.code;
+}
 
 test("bundled runtime matches the pinned backlog-api source record", () => {
   const packageJson = JSON.parse(fs.readFileSync(path.resolve(ROOT, "package.json"), "utf8"));
@@ -23,7 +40,7 @@ test("bundled runtime matches the pinned backlog-api source record", () => {
   assert.equal(source.artifact.origin, "github-release-asset");
   assert.equal(source.artifact.file, `backlog-api-${packageJson.version}.mjs`);
   assert.equal(source.artifact.sha256, sha256);
-  assert.match(source.artifact.url, /\/releases\/download\/v0\.3\.2\/backlog-api-0\.3\.2\.mjs$/);
+  assert.match(source.artifact.url, /\/releases\/download\/v0\.3\.4\/backlog-api-0\.3\.4\.mjs$/);
   assert.match(source.source.commit, /^[0-9a-f]{40}$/);
 });
 
@@ -34,11 +51,6 @@ test("bundled runtime defaults to READ and requires explicit CREATE permission",
     issueTypeId: 1,
     priorityId: 3
   });
-  const environment = {
-    ...process.env,
-    BACKLOG_DOMAIN: "example.backlog.com",
-    BACKLOG_API_KEY: "test"
-  };
   const common = [runtime, "call", "add_issue", "--input", "-", "--dry-run"];
 
   const denied = spawnSync(process.execPath, common, {
@@ -49,7 +61,7 @@ test("bundled runtime defaults to READ and requires explicit CREATE permission",
   assert.equal(denied.status, 1);
   assert.equal(JSON.parse(denied.stdout).diagnostics[0].code, "PERMISSION_REQUIRED");
 
-  const allowed = spawnSync(process.execPath, [...common, "--allow", "CREATE"], {
+  const allowed = spawnSync(process.execPath, [...common, "--allow", "CREATE", "--verbose"], {
     encoding: "utf8",
     env: environment,
     input
@@ -58,12 +70,51 @@ test("bundled runtime defaults to READ and requires explicit CREATE permission",
   assert.equal(JSON.parse(allowed.stdout).dryRun, true);
 });
 
+test("all 58 operations are classified and every mutation is denied without permission", () => {
+  const catalogExecution = runRuntime(["tools", "list"]);
+  assert.equal(catalogExecution.status, 0);
+  const catalog = JSON.parse(catalogExecution.stdout);
+  const expectedCounts = { READ: 35, CREATE: 9, UPDATE: 10, DELETE: 4 };
+  const actualCounts = Object.fromEntries(
+    Object.keys(expectedCounts).map((permission) => [
+      permission,
+      catalog.operations.filter((operation) => operation.requiredPermission === permission).length
+    ])
+  );
+
+  assert.equal(catalog.operations.length, 58);
+  assert.deepEqual(actualCounts, expectedCounts);
+
+  for (const operation of catalog.operations.filter(
+    (candidate) => candidate.requiredPermission !== "READ"
+  )) {
+    const denied = runRuntime(
+      ["call", operation.name, "--input", "-", "--dry-run"],
+      {}
+    );
+    assert.equal(denied.status, 1, operation.name);
+    assert.equal(firstDiagnosticCode(denied), "PERMISSION_REQUIRED", operation.name);
+  }
+});
+
+test("every DELETE operation requires the separate destructive confirmation gate", () => {
+  const catalog = JSON.parse(runRuntime(["tools", "list"]).stdout);
+  const deletes = catalog.operations.filter(
+    (operation) => operation.requiredPermission === "DELETE"
+  );
+
+  assert.equal(deletes.length, 4);
+  for (const operation of deletes) {
+    const unconfirmed = runRuntime(
+      ["call", operation.name, "--input", "-", "--dry-run", "--allow", "DELETE"],
+      {}
+    );
+    assert.equal(unconfirmed.status, 1, operation.name);
+    assert.equal(firstDiagnosticCode(unconfirmed), "CONFIRMATION_REQUIRED", operation.name);
+  }
+});
+
 test("bundled runtime requires DELETE permission and a separate destructive gate", () => {
-  const environment = {
-    ...process.env,
-    BACKLOG_DOMAIN: "example.backlog.com",
-    BACKLOG_API_KEY: "test"
-  };
   const common = [
     runtime,
     "call",

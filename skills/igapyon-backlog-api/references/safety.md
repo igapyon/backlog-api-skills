@@ -34,6 +34,10 @@ Only after that approval, add the narrow permission flag for the one invocation:
 - `--allow UPDATE` for updates and notification-state changes
 - `--allow DELETE` for deletions
 
+Bind each approval to the organization, target, exact operation, and material
+fields shown to the user. If any bound value changes before execution, invalidate
+the approval and ask again. Do not reuse approval for another invocation.
+
 Ordinary mutations include creating or updating a specifically requested issue,
 comment, wiki, document, milestone, pull request, or watching item. They may
 proceed only after the mutation approval, using only the corresponding
@@ -60,3 +64,11 @@ then a separate destructive confirmation.
 Preserve upstream authentication, authorization, validation, rate-limit,
 truncation, and transport diagnostics. Redact secrets if an upstream diagnostic
 unexpectedly contains them.
+
+During the beta period, use `--verbose` for actual Backlog API calls. Treat its
+stderr events as transient diagnostics and do not save them without explicit
+user approval. Events are `verbose: `-prefixed JSON and may contain allowlisted
+resource IDs or keys, duration, changed field names, pagination, and an
+available failure HTTP status. They omit credentials, bodies, search text,
+personal data, and error bodies. Stop and report a safety defect if any excluded
+value appears.

@@ -1,6 +1,6 @@
 # Third-Party Notices
 
-The bundled `runtime/backlog-api-0.3.2.mjs` contains published handler code from
+The bundled `runtime/backlog-api-0.3.4.mjs` contains published handler code from
 Nulab's `backlog-mcp-server` version `0.13.2`, licensed under the MIT License.
 
 - Source: <https://github.com/nulab/backlog-mcp-server>
