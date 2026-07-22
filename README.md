@@ -3,6 +3,9 @@
 `backlog-api-skills` provides an installable Agent Skill for operating Nulab
 Backlog through the bundled `backlog-api` Node CLI runtime.
 
+This product is currently beta. Its version remains a numeric Semantic Version
+such as `0.3.2`; beta status is not encoded in the version number.
+
 The Backlog MCP-equivalent Node Core/CLI is maintained separately in the sister
 [`backlog-api`](https://github.com/igapyon/backlog-api) repository. This
 repository adds explicit activation, user-facing safety policy, working-context
@@ -14,7 +17,7 @@ guidance, and Agent-oriented workflows around a pinned Node runtime.
 skills/igapyon-backlog-api/      Agent Skill, references, notices, and runtime
 scripts/                         Skill bundle and runtime synchronization tools
 tests/                           Skill contract, provenance, and bundle tests
-docs/                            Skill development notes and GitHub Issue drafts
+docs/                            Skill development and product reference notes
 workplace/                       ignored local scratch and approved data outputs
 ```
 
@@ -23,11 +26,12 @@ release artifacts belong to `backlog-api`, not this repository.
 
 ## Agent Skill
 
+- maturity: beta
 - installed name: `igapyon-backlog-api`
 - explicit triggers: `igapyon-backlog-api`, `backlog-api`, or
   `backlog-api-skills`
 - backend policy: CLI only
-- bundled runtime: `runtime/backlog-api-0.3.0.mjs`
+- bundled runtime: `runtime/backlog-api-0.3.2.mjs`
 - runtime source record: `runtime/backlog-api-source.json`
 
 Generic mentions of Backlog, issues, projects, wikis, or pull requests do not
@@ -42,6 +46,47 @@ activate the Skill by themselves.
 
 Credentials are inherited from the runtime process environment. They are not
 stored, printed, or bundled by this repository.
+
+The bundled CLI allows read operations by default. Create, update, and delete
+operations require an explicit `--allow CREATE`, `--allow UPDATE`, or
+`--allow DELETE` argument for that invocation, and the Agent must obtain the
+user's just-in-time approval before supplying it. A destructive or broad
+operation requires a second, separate confirmation after the mutation approval;
+one approval cannot satisfy both gates.
+
+### Local Connection Configuration
+
+When a local Backlog connection file is explicitly requested, create
+`workplace/backlog.env` in the Agent or operator workspace that owns local
+credentials, not inside the installed Skill. Use this template and replace the
+example domain:
+
+```dotenv
+BACKLOG_DOMAIN=userunique.backlog.com
+BACKLOG_API_KEY=
+```
+
+Apply the following safety rules:
+
+- create the file only after an explicit request
+- set its permissions to `600`
+- never overwrite an existing file
+- never print or copy its values into chat, logs, tracked files, or generated
+  artifacts
+- specify `BACKLOG_DOMAIN` as a host name only, without `https://` or a trailing
+  slash
+- confirm that the credential-owning workspace ignores the file under
+  `workplace/`
+- begin a connection test with the read-only `get_space` operation
+
+The CLI does not automatically load this file. Pass its resolved path to Node
+explicitly when running the bundled runtime:
+
+```bash
+printf '{}\n' | node --env-file=<agent-workspace>/workplace/backlog.env \
+  skills/igapyon-backlog-api/runtime/backlog-api-0.3.2.mjs \
+  call get_space --input -
+```
 
 ## Build and Test
 
@@ -61,20 +106,27 @@ Generated output:
 
 ## Refresh the Node Runtime
 
-For local sister checkouts, first build `../backlog-api`, then synchronize its
-CLI artifact:
+Use the published `backlog-api` Release asset as the source of a releasable
+Skill runtime. Download the versioned CLI asset and `SHA256SUMS`, verify the
+checksum, then import the asset with its exact Release tag and commit:
 
 ```bash
-npm --prefix ../backlog-api run build
-npm run sync:runtime
+npm run import:runtime:release -- \
+  --version 0.3.2 \
+  --tag v0.3.2 \
+  --commit 80fef34afae8b38861604cd8e30dd7997a78b2c3 \
+  --artifact /path/to/backlog-api-0.3.2.mjs \
+  --expected-sha256 65b123a53b74d321e201b72d9780c2da67d4a66df582b69805e68c0813abcaa2
 ```
 
-The synchronization records the source repository, version, Git commit, dirty
-state, artifact filename, SHA-256, and upstream anchor in
+The import validates the asset checksum and reported version, then records the
+source repository, version, Release tag, Git commit, Release URL, asset URL,
+SHA-256, and upstream anchor in
 `skills/igapyon-backlog-api/runtime/backlog-api-source.json`.
 
-Use a clean, committed `backlog-api` source state before preparing a Skill
-release. After changing bundled Skill files, regenerate
+`npm run sync:runtime` remains available for local development builds from the
+sister checkout, but a distributable Skill release should use the published
+Release asset. After changing bundled Skill files, regenerate
 `skills/igapyon-backlog-api/index.json` with `miku-indexgen --refresh-index`.
 
 ## Install

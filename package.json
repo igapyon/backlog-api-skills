@@ -1,6 +1,6 @@
 {
   "name": "backlog-api-skills",
-  "version": "0.3.0",
+  "version": "0.3.2",
   "private": true,
   "type": "module",
   "engines": {
@@ -11,6 +11,7 @@
     "build": "npm test && npm run build:bundle:zip",
     "smoke:runtime": "node scripts/smoke-runtime.mjs",
     "sync:runtime": "node scripts/sync-backlog-api-runtime.mjs",
+    "import:runtime:release": "node scripts/import-backlog-api-release.mjs",
     "build:bundle": "node scripts/build-skill-bundle.mjs",
     "build:bundle:zip": "node scripts/build-skill-bundle-zip.mjs"
   }

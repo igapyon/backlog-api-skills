@@ -3,8 +3,9 @@
 ## Design Record
 
 - checked date: 2026-07-22
-- repository version: `0.3.0`
-- implementation maturity: standalone CLI-backed Agent Skill
+- repository version: `0.3.2`
+- implementation maturity: beta, standalone CLI-backed Agent Skill
+- version policy: keep numeric Semantic Versions without a beta suffix
 - Node provider: <https://github.com/igapyon/backlog-api>
 - original combined implementation commit:
   `d734c4fb1ecb91abfc2acf2b4995f3f8a4273fd2`
@@ -31,13 +32,18 @@ The sister `backlog-api` repository owns:
 
 ## Runtime Refresh Contract
 
-1. update and test `backlog-api`
-2. commit the exact Node source state
-3. run the Node build
-4. run `npm run sync:runtime` in this repository
-5. confirm `backlog-api-source.json` has `dirty: false`
-6. regenerate the Skill index
-7. run the complete Skill build and tests
+1. publish and verify the target `backlog-api` Release
+2. download the versioned CLI asset and `SHA256SUMS`
+3. confirm the downloaded asset checksum matches the published checksum
+4. run `npm run import:runtime:release` with the exact version, tag, commit,
+   asset path, and checksum
+5. confirm `backlog-api-source.json` records the GitHub Release asset identity
+6. update runtime references and the Skill repository version
+7. regenerate the Skill index
+8. run the complete Skill build and isolated bundle tests
+
+`npm run sync:runtime` may be used for local development from a clean sister
+checkout. It is not the provenance path for a distributable Skill release.
 
 The trace chain is:
 

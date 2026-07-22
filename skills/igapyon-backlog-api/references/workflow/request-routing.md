@@ -14,21 +14,26 @@
    type, milestone, and custom-field identities that matter.
 3. Separate user-provided values from values discovered through read calls.
 4. If a material field is ambiguous, ask before execution.
-5. Execute one smallest-scope mutation.
-6. Read back the target when practical and report its stable key or ID.
+5. Present the operation class, organization, exact target, and material fields,
+   and ask for just-in-time mutation approval.
+6. Only after approval, execute one smallest-scope mutation with its required
+   `--allow CREATE` or `--allow UPDATE` permission.
+7. Read back the target when practical and report its stable key or ID.
 
-An explicit request such as “create this issue” or “post this comment” normally
-authorizes that exact operation. Do not add an unnecessary second confirmation
-unless the target or payload is ambiguous, broad, or destructive.
+An explicit request such as “create this issue” or “post this comment” begins
+the mutation workflow but does not replace the just-in-time approval above.
 
 ## Delete Workflow
 
 1. Read the exact target.
 2. Present the organization, resource type, stable key/ID, and human-readable
    title or name.
-3. Ask for just-in-time confirmation.
-4. Delete only after confirmation.
-5. Report the upstream result without implying recoverability.
+3. Ask for mutation approval to supply `--allow DELETE`.
+4. After that approval, separately explain the destructive impact and ask for
+   a second confirmation.
+5. Delete only after both approvals, passing `--allow DELETE` and
+   `--confirm-destructive`.
+6. Report the upstream result without implying recoverability.
 
 Never convert “remove from my view,” “close,” “archive,” or “mark as read” into
 a delete without resolving the intended Backlog operation.

@@ -23,9 +23,21 @@ authorization headers are secrets.
 
 Read operations do not change Backlog state.
 
+The CLI permits `READ` only by default. Before every mutation, present its
+permission class, organization, exact target, and material payload, then ask
+for just-in-time user approval. The request that started the workflow is not
+itself the approval to supply a permission flag.
+
+Only after that approval, add the narrow permission flag for the one invocation:
+
+- `--allow CREATE` for additions
+- `--allow UPDATE` for updates and notification-state changes
+- `--allow DELETE` for deletions
+
 Ordinary mutations include creating or updating a specifically requested issue,
 comment, wiki, document, milestone, pull request, or watching item. They may
-proceed when target and payload are clear.
+proceed only after the mutation approval, using only the corresponding
+permission for that invocation. Do not reuse approval from another operation.
 
 High-impact mutations include:
 
@@ -36,8 +48,12 @@ High-impact mutations include:
 - an update that replaces substantial existing content when the user asked for
   a narrow edit
 
-Obtain just-in-time confirmation for high-impact mutations and state the exact
-scope. Do not rely on a confirmation from an earlier unrelated operation.
+After the mutation approval, obtain a second, separate confirmation for every
+high-impact mutation and state the exact scope and difficult-to-reverse effect.
+One user reply must not satisfy both gates. A deletion therefore requires the
+first approval before `--allow DELETE` and another confirmation before
+`--confirm-destructive`. A broad reset similarly requires UPDATE approval and
+then a separate destructive confirmation.
 
 ## Diagnostics
 

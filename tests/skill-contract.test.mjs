@@ -17,8 +17,11 @@ test("skill contract keeps explicit activation and CLI-only boundary", () => {
 
 test("skill contract protects credentials and destructive operations", () => {
   assert.match(skill, /never ask the user to paste an API key/i);
-  assert.match(skill, /Before any `delete_\*` operation, obtain just-in-time confirmation/i);
-  assert.match(skill, /Pass `--confirm-destructive` only after that confirmation/i);
+  assert.match(skill, /Before every create, update, or delete, obtain just-in-time user approval/i);
+  assert.match(skill, /request that initiated the workflow does not itself satisfy this approval/i);
+  assert.match(skill, /obtain a second, separate confirmation after\s+the mutation approval/i);
+  assert.match(skill, /never treat one reply as\s+satisfying both approvals/i);
+  assert.match(skill, /Pass `--confirm-destructive` only after the second confirmation/i);
 });
 
 test("required bundled files exist", () => {
@@ -27,7 +30,7 @@ test("required bundled files exist", () => {
     "LICENSE",
     "THIRD_PARTY_NOTICES.md",
     "licenses/backlog-mcp-server-MIT.txt",
-    "runtime/backlog-api-0.3.0.mjs",
+    "runtime/backlog-api-0.3.2.mjs",
     "runtime/backlog-api-source.json",
     "references/INDEX.md",
     "references/runtime/operations-map.md",
