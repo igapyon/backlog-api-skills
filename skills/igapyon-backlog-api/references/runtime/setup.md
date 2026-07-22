@@ -49,8 +49,8 @@ Node process explicitly. Begin live verification with the read-only
 
 ```bash
 printf '{}\n' | node --env-file=<agent-workspace>/workplace/backlog.env \
-  <skill-directory>/runtime/backlog-api-0.3.2.mjs \
-  call get_space --input -
+  <skill-directory>/runtime/backlog-api-0.3.4.mjs \
+  call get_space --input - --verbose
 ```
 
 ## Agent Boundary
@@ -67,8 +67,8 @@ printf '{}\n' | node --env-file=<agent-workspace>/workplace/backlog.env \
 Verify installation without credentials:
 
 ```bash
-node runtime/backlog-api-0.3.2.mjs --version
-node runtime/backlog-api-0.3.2.mjs tools list
+node runtime/backlog-api-0.3.4.mjs --version
+node runtime/backlog-api-0.3.4.mjs tools list
 ```
 
 An actual Backlog operation requires configured credentials. A missing or

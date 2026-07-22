@@ -11,9 +11,9 @@ The runtime is produced by <https://github.com/igapyon/backlog-api>. Use
 Use the newest versioned runtime under `runtime/`:
 
 ```bash
-node runtime/backlog-api-0.3.2.mjs --version
-node runtime/backlog-api-0.3.2.mjs tools list
-node runtime/backlog-api-0.3.2.mjs trace get_issue
+node runtime/backlog-api-0.3.4.mjs --version
+node runtime/backlog-api-0.3.4.mjs tools list
+node runtime/backlog-api-0.3.4.mjs trace get_issue
 ```
 
 The installed absolute path may differ. Resolve it from the active skill
@@ -24,7 +24,7 @@ directory rather than assuming the current working directory.
 Pass exactly one JSON object:
 
 ```bash
-node runtime/backlog-api-0.3.2.mjs call get_issue --input request.json
+node runtime/backlog-api-0.3.4.mjs call get_issue --input request.json --verbose
 ```
 
 Use `--input -` for stdin. Use `--dry-run` for schema validation without a
@@ -33,6 +33,18 @@ needed by a mutation only after just-in-time user approval: `--allow CREATE`,
 `--allow UPDATE`, or `--allow DELETE`. Destructive and broad-reset operations
 require a second, separate confirmation before `--confirm-destructive`; the
 mutation approval cannot double as the destructive confirmation.
+
+During beta operation, add `--verbose` to actual Backlog API calls. It emits
+`verbose: `-prefixed JSON events to stderr while leaving the result envelope on
+stdout. Events may include allowlisted target/result identifiers, duration,
+changed field names, pagination, and an available failure HTTP status. They do
+not expose bodies, search text, credentials, personal data, or error bodies. Do
+not persist stderr without explicit user approval. Metadata commands do not
+need the flag, and dry-run uses it only when diagnostics are useful.
+
+The request object may include a top-level GraphQL-style `fields` selection,
+such as `"fields":"{ id summary }"`, to reduce returned result fields. Invalid
+selections are rejected before a Backlog call.
 
 ## Compatibility Baseline
 

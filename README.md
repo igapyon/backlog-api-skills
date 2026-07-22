@@ -4,7 +4,7 @@
 Backlog through the bundled `backlog-api` Node CLI runtime.
 
 This product is currently beta. Its version remains a numeric Semantic Version
-such as `0.3.2`; beta status is not encoded in the version number.
+such as `0.3.4`; beta status is not encoded in the version number.
 
 The Backlog MCP-equivalent Node Core/CLI is maintained separately in the sister
 [`backlog-api`](https://github.com/igapyon/backlog-api) repository. This
@@ -31,7 +31,7 @@ release artifacts belong to `backlog-api`, not this repository.
 - explicit triggers: `igapyon-backlog-api`, `backlog-api`, or
   `backlog-api-skills`
 - backend policy: CLI only
-- bundled runtime: `runtime/backlog-api-0.3.2.mjs`
+- bundled runtime: `runtime/backlog-api-0.3.4.mjs`
 - runtime source record: `runtime/backlog-api-source.json`
 
 Generic mentions of Backlog, issues, projects, wikis, or pull requests do not
@@ -53,6 +53,14 @@ operations require an explicit `--allow CREATE`, `--allow UPDATE`, or
 user's just-in-time approval before supplying it. A destructive or broad
 operation requires a second, separate confirmation after the mutation approval;
 one approval cannot satisfy both gates.
+
+During the beta period, run actual Backlog API calls with `--verbose` by
+default. The CLI keeps the JSON result on stdout and writes a safe access
+summary to stderr as `verbose: `-prefixed JSON. It includes allowlisted resource
+IDs or keys and execution metadata, but excludes credentials, bodies, search
+text, personal data, and error bodies. Do not persist verbose diagnostics unless
+the user explicitly approves the destination and handling. Metadata commands do
+not need `--verbose`, and dry-run uses it only when diagnostic output is useful.
 
 ### Local Connection Configuration
 
@@ -84,8 +92,8 @@ explicitly when running the bundled runtime:
 
 ```bash
 printf '{}\n' | node --env-file=<agent-workspace>/workplace/backlog.env \
-  skills/igapyon-backlog-api/runtime/backlog-api-0.3.2.mjs \
-  call get_space --input -
+  skills/igapyon-backlog-api/runtime/backlog-api-0.3.4.mjs \
+  call get_space --input - --verbose
 ```
 
 ## Build and Test
@@ -112,11 +120,11 @@ checksum, then import the asset with its exact Release tag and commit:
 
 ```bash
 npm run import:runtime:release -- \
-  --version 0.3.2 \
-  --tag v0.3.2 \
-  --commit 80fef34afae8b38861604cd8e30dd7997a78b2c3 \
-  --artifact /path/to/backlog-api-0.3.2.mjs \
-  --expected-sha256 65b123a53b74d321e201b72d9780c2da67d4a66df582b69805e68c0813abcaa2
+  --version 0.3.4 \
+  --tag v0.3.4 \
+  --commit 58b96fd26995bafdee00aa89a8616a711b0563f9 \
+  --artifact /path/to/backlog-api-0.3.4.mjs \
+  --expected-sha256 d872523d353504dcb591d5b4094e729b96588b167f5c351bd57354a8b6dd960c
 ```
 
 The import validates the asset checksum and reported version, then records the
