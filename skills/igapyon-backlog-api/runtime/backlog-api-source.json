@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "repository": "https://github.com/igapyon/backlog-api",
+    "version": "0.3.0",
+    "commit": "c871479b18a68164c87f79904a45ce09fe1f7ac9",
+    "dirty": false
+  },
+  "artifact": {
+    "file": "backlog-api-0.3.0.mjs",
+    "sha256": "19f89a7bc6ba5e72e89c68810e485a945f029bd4f6b3e813f06adfb296ade579"
+  },
+  "upstream": {
+    "repository": "https://github.com/nulab/backlog-mcp-server",
+    "version": "0.13.2",
+    "tag": "v0.13.2",
+    "commit": "d12f010de976af11bcd43f1d3497dc7043d26e62"
+  }
+}

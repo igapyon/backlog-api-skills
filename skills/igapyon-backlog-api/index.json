@@ -1,0 +1,17 @@
+{
+ "title": "Backlog API Skill Index",
+ "generator": "miku-indexgen",
+ "generation": {"schemaVersion":1,"inputPath":".","markdownOutput":false,"recursive":true,"includeExtensions":["md","json"],"inputEncoding":"utf8","outputEncoding":"utf8","title":"Backlog API Skill Index","includeGeneratorMetadata":true},
+ "basePath": ".",
+ "files": [
+  {"name":"SKILL.md","path":"SKILL.md","ext":"md","dir":"","size":5536,"description":"Use only when the user explicitly names `igapyon-backlog-api`, `backlog-api`, or `backlog-api-skills`, or explicitly asks to apply this skill for Nulab Backlog API workflows. This skill runs the bundled backlog-api Node CLI converted from Nulab Backlog ...","summary":"Backlog API"},
+  {"name":"THIRD_PARTY_NOTICES.md","path":"THIRD_PARTY_NOTICES.md","ext":"md","dir":"","size":376,"summary":"Third-Party Notices"},
+  {"name":"INDEX.md","path":"references/INDEX.md","ext":"md","dir":"references","size":752,"summary":"Backlog API References"},
+  {"name":"operations-map.md","path":"references/runtime/operations-map.md","ext":"md","dir":"references/runtime","size":2485,"summary":"Backlog API Node Operations Map"},
+  {"name":"setup.md","path":"references/runtime/setup.md","ext":"md","dir":"references/runtime","size":1293,"summary":"Backlog API Runtime Setup"},
+  {"name":"safety.md","path":"references/safety.md","ext":"md","dir":"references","size":1582,"summary":"Safety and Data Handling"},
+  {"name":"upstream-compatibility.md","path":"references/upstream-compatibility.md","ext":"md","dir":"references","size":1542,"summary":"Upstream Compatibility"},
+  {"name":"request-routing.md","path":"references/workflow/request-routing.md","ext":"md","dir":"references/workflow","size":1649,"summary":"Request Routing"},
+  {"name":"backlog-api-source.json","path":"runtime/backlog-api-source.json","ext":"json","dir":"runtime","size":534}
+ ]
+}
