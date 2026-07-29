@@ -24,6 +24,10 @@ For multiple organizations, it uses:
 - `BACKLOG_ORG_<NAME>_DOMAIN`
 - `BACKLOG_ORG_<NAME>_API_KEY`
 
+The runtime also uses `BACKLOG_API_ALLOWED_PERMISSIONS` as the environment-level
+maximum for `READ`, `CREATE`, `UPDATE`, and `DELETE`. It defaults to `READ` when
+unset. A write must be allowed both here and by the call-level `--allow`.
+
 ## Local Connection File
 
 When the user explicitly requests a local connection file, use
@@ -34,6 +38,7 @@ workspace:
 ```dotenv
 BACKLOG_DOMAIN=userunique.backlog.com
 BACKLOG_API_KEY=
+BACKLOG_API_ALLOWED_PERMISSIONS=READ
 ```
 
 - create it only when it does not already exist
@@ -49,7 +54,7 @@ Node process explicitly. Begin live verification with the read-only
 
 ```bash
 printf '{}\n' | node --env-file=<agent-workspace>/workplace/backlog.env \
-  <skill-directory>/runtime/backlog-api-0.3.4.mjs \
+  <skill-directory>/runtime/backlog-api-0.5.0.mjs \
   call get_space --input - --verbose
 ```
 
@@ -67,8 +72,9 @@ printf '{}\n' | node --env-file=<agent-workspace>/workplace/backlog.env \
 Verify installation without credentials:
 
 ```bash
-node runtime/backlog-api-0.3.4.mjs --version
-node runtime/backlog-api-0.3.4.mjs tools list
+node runtime/backlog-api-0.5.0.mjs --version
+node runtime/backlog-api-0.5.0.mjs tools list
+node runtime/backlog-api-0.5.0.mjs tools describe get_space
 ```
 
 An actual Backlog operation requires configured credentials. A missing or

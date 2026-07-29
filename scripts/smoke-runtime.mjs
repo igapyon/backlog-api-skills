@@ -25,6 +25,15 @@ const catalog = JSON.parse(
 assert.equal(version, packageJson.version);
 assert.equal(catalog.product.name, "backlog-api");
 assert.equal(catalog.product.version, packageJson.version);
-assert.equal(catalog.operations.length, 58);
+assert.equal(catalog.operations.length, 59);
+
+const description = JSON.parse(
+  execFileSync("node", [runtime, "tools", "describe", "get_issue"], {
+    encoding: "utf8"
+  })
+);
+assert.equal(description.operation.name, "get_issue");
+assert.equal(description.operation.requiredPermission, "READ");
+assert.equal(description.operation.credentialsRequiredForDryRun, false);
 
 process.stdout.write("[smoke:runtime] bundled backlog-api runtime passed\n");

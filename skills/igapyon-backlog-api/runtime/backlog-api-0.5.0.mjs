@@ -29060,7 +29060,1472 @@ var allTools = (backlog, helper) => {
   };
 };
 
+// node_modules/zod-to-json-schema/dist/esm/Options.js
+var ignoreOverride = /* @__PURE__ */ Symbol("Let zodToJsonSchema decide on which parser to use");
+var defaultOptions = {
+  name: void 0,
+  $refStrategy: "root",
+  basePath: ["#"],
+  effectStrategy: "input",
+  pipeStrategy: "all",
+  dateStrategy: "format:date-time",
+  mapStrategy: "entries",
+  removeAdditionalStrategy: "passthrough",
+  allowedAdditionalProperties: true,
+  rejectedAdditionalProperties: false,
+  definitionPath: "definitions",
+  target: "jsonSchema7",
+  strictUnions: false,
+  definitions: {},
+  errorMessages: false,
+  markdownDescription: false,
+  patternStrategy: "escape",
+  applyRegexFlags: false,
+  emailStrategy: "format:email",
+  base64Strategy: "contentEncoding:base64",
+  nameStrategy: "ref",
+  openAiAnyTypeName: "OpenAiAnyType"
+};
+var getDefaultOptions = (options) => typeof options === "string" ? {
+  ...defaultOptions,
+  name: options
+} : {
+  ...defaultOptions,
+  ...options
+};
+
+// node_modules/zod-to-json-schema/dist/esm/Refs.js
+var getRefs = (options) => {
+  const _options = getDefaultOptions(options);
+  const currentPath = _options.name !== void 0 ? [..._options.basePath, _options.definitionPath, _options.name] : _options.basePath;
+  return {
+    ..._options,
+    flags: { hasReferencedOpenAiAnyType: false },
+    currentPath,
+    propertyPath: void 0,
+    seen: new Map(Object.entries(_options.definitions).map(([name, def]) => [
+      def._def,
+      {
+        def: def._def,
+        path: [..._options.basePath, _options.definitionPath, name],
+        // Resolution of references will be forced even though seen, so it's ok that the schema is undefined here for now.
+        jsonSchema: void 0
+      }
+    ]))
+  };
+};
+
+// node_modules/zod-to-json-schema/dist/esm/errorMessages.js
+function addErrorMessage(res, key, errorMessage2, refs) {
+  if (!refs?.errorMessages)
+    return;
+  if (errorMessage2) {
+    res.errorMessage = {
+      ...res.errorMessage,
+      [key]: errorMessage2
+    };
+  }
+}
+function setResponseValueAndErrors(res, key, value, errorMessage2, refs) {
+  res[key] = value;
+  addErrorMessage(res, key, errorMessage2, refs);
+}
+
+// node_modules/zod-to-json-schema/dist/esm/getRelativePath.js
+var getRelativePath = (pathA, pathB) => {
+  let i = 0;
+  for (; i < pathA.length && i < pathB.length; i++) {
+    if (pathA[i] !== pathB[i])
+      break;
+  }
+  return [(pathA.length - i).toString(), ...pathB.slice(i)].join("/");
+};
+
+// node_modules/zod-to-json-schema/dist/esm/parsers/any.js
+function parseAnyDef(refs) {
+  if (refs.target !== "openAi") {
+    return {};
+  }
+  const anyDefinitionPath = [
+    ...refs.basePath,
+    refs.definitionPath,
+    refs.openAiAnyTypeName
+  ];
+  refs.flags.hasReferencedOpenAiAnyType = true;
+  return {
+    $ref: refs.$refStrategy === "relative" ? getRelativePath(anyDefinitionPath, refs.currentPath) : anyDefinitionPath.join("/")
+  };
+}
+
+// node_modules/zod-to-json-schema/dist/esm/parsers/array.js
+function parseArrayDef(def, refs) {
+  const res = {
+    type: "array"
+  };
+  if (def.type?._def && def.type?._def?.typeName !== ZodFirstPartyTypeKind.ZodAny) {
+    res.items = parseDef(def.type._def, {
+      ...refs,
+      currentPath: [...refs.currentPath, "items"]
+    });
+  }
+  if (def.minLength) {
+    setResponseValueAndErrors(res, "minItems", def.minLength.value, def.minLength.message, refs);
+  }
+  if (def.maxLength) {
+    setResponseValueAndErrors(res, "maxItems", def.maxLength.value, def.maxLength.message, refs);
+  }
+  if (def.exactLength) {
+    setResponseValueAndErrors(res, "minItems", def.exactLength.value, def.exactLength.message, refs);
+    setResponseValueAndErrors(res, "maxItems", def.exactLength.value, def.exactLength.message, refs);
+  }
+  return res;
+}
+
+// node_modules/zod-to-json-schema/dist/esm/parsers/bigint.js
+function parseBigintDef(def, refs) {
+  const res = {
+    type: "integer",
+    format: "int64"
+  };
+  if (!def.checks)
+    return res;
+  for (const check of def.checks) {
+    switch (check.kind) {
+      case "min":
+        if (refs.target === "jsonSchema7") {
+          if (check.inclusive) {
+            setResponseValueAndErrors(res, "minimum", check.value, check.message, refs);
+          } else {
+            setResponseValueAndErrors(res, "exclusiveMinimum", check.value, check.message, refs);
+          }
+        } else {
+          if (!check.inclusive) {
+            res.exclusiveMinimum = true;
+          }
+          setResponseValueAndErrors(res, "minimum", check.value, check.message, refs);
+        }
+        break;
+      case "max":
+        if (refs.target === "jsonSchema7") {
+          if (check.inclusive) {
+            setResponseValueAndErrors(res, "maximum", check.value, check.message, refs);
+          } else {
+            setResponseValueAndErrors(res, "exclusiveMaximum", check.value, check.message, refs);
+          }
+        } else {
+          if (!check.inclusive) {
+            res.exclusiveMaximum = true;
+          }
+          setResponseValueAndErrors(res, "maximum", check.value, check.message, refs);
+        }
+        break;
+      case "multipleOf":
+        setResponseValueAndErrors(res, "multipleOf", check.value, check.message, refs);
+        break;
+    }
+  }
+  return res;
+}
+
+// node_modules/zod-to-json-schema/dist/esm/parsers/boolean.js
+function parseBooleanDef() {
+  return {
+    type: "boolean"
+  };
+}
+
+// node_modules/zod-to-json-schema/dist/esm/parsers/branded.js
+function parseBrandedDef(_def, refs) {
+  return parseDef(_def.type._def, refs);
+}
+
+// node_modules/zod-to-json-schema/dist/esm/parsers/catch.js
+var parseCatchDef = (def, refs) => {
+  return parseDef(def.innerType._def, refs);
+};
+
+// node_modules/zod-to-json-schema/dist/esm/parsers/date.js
+function parseDateDef(def, refs, overrideDateStrategy) {
+  const strategy = overrideDateStrategy ?? refs.dateStrategy;
+  if (Array.isArray(strategy)) {
+    return {
+      anyOf: strategy.map((item, i) => parseDateDef(def, refs, item))
+    };
+  }
+  switch (strategy) {
+    case "string":
+    case "format:date-time":
+      return {
+        type: "string",
+        format: "date-time"
+      };
+    case "format:date":
+      return {
+        type: "string",
+        format: "date"
+      };
+    case "integer":
+      return integerDateParser(def, refs);
+  }
+}
+var integerDateParser = (def, refs) => {
+  const res = {
+    type: "integer",
+    format: "unix-time"
+  };
+  if (refs.target === "openApi3") {
+    return res;
+  }
+  for (const check of def.checks) {
+    switch (check.kind) {
+      case "min":
+        setResponseValueAndErrors(
+          res,
+          "minimum",
+          check.value,
+          // This is in milliseconds
+          check.message,
+          refs
+        );
+        break;
+      case "max":
+        setResponseValueAndErrors(
+          res,
+          "maximum",
+          check.value,
+          // This is in milliseconds
+          check.message,
+          refs
+        );
+        break;
+    }
+  }
+  return res;
+};
+
+// node_modules/zod-to-json-schema/dist/esm/parsers/default.js
+function parseDefaultDef(_def, refs) {
+  return {
+    ...parseDef(_def.innerType._def, refs),
+    default: _def.defaultValue()
+  };
+}
+
+// node_modules/zod-to-json-schema/dist/esm/parsers/effects.js
+function parseEffectsDef(_def, refs) {
+  return refs.effectStrategy === "input" ? parseDef(_def.schema._def, refs) : parseAnyDef(refs);
+}
+
+// node_modules/zod-to-json-schema/dist/esm/parsers/enum.js
+function parseEnumDef(def) {
+  return {
+    type: "string",
+    enum: Array.from(def.values)
+  };
+}
+
+// node_modules/zod-to-json-schema/dist/esm/parsers/intersection.js
+var isJsonSchema7AllOfType = (type) => {
+  if ("type" in type && type.type === "string")
+    return false;
+  return "allOf" in type;
+};
+function parseIntersectionDef(def, refs) {
+  const allOf = [
+    parseDef(def.left._def, {
+      ...refs,
+      currentPath: [...refs.currentPath, "allOf", "0"]
+    }),
+    parseDef(def.right._def, {
+      ...refs,
+      currentPath: [...refs.currentPath, "allOf", "1"]
+    })
+  ].filter((x) => !!x);
+  let unevaluatedProperties = refs.target === "jsonSchema2019-09" ? { unevaluatedProperties: false } : void 0;
+  const mergedAllOf = [];
+  allOf.forEach((schema) => {
+    if (isJsonSchema7AllOfType(schema)) {
+      mergedAllOf.push(...schema.allOf);
+      if (schema.unevaluatedProperties === void 0) {
+        unevaluatedProperties = void 0;
+      }
+    } else {
+      let nestedSchema = schema;
+      if ("additionalProperties" in schema && schema.additionalProperties === false) {
+        const { additionalProperties, ...rest } = schema;
+        nestedSchema = rest;
+      } else {
+        unevaluatedProperties = void 0;
+      }
+      mergedAllOf.push(nestedSchema);
+    }
+  });
+  return mergedAllOf.length ? {
+    allOf: mergedAllOf,
+    ...unevaluatedProperties
+  } : void 0;
+}
+
+// node_modules/zod-to-json-schema/dist/esm/parsers/literal.js
+function parseLiteralDef(def, refs) {
+  const parsedType = typeof def.value;
+  if (parsedType !== "bigint" && parsedType !== "number" && parsedType !== "boolean" && parsedType !== "string") {
+    return {
+      type: Array.isArray(def.value) ? "array" : "object"
+    };
+  }
+  if (refs.target === "openApi3") {
+    return {
+      type: parsedType === "bigint" ? "integer" : parsedType,
+      enum: [def.value]
+    };
+  }
+  return {
+    type: parsedType === "bigint" ? "integer" : parsedType,
+    const: def.value
+  };
+}
+
+// node_modules/zod-to-json-schema/dist/esm/parsers/string.js
+var emojiRegex2 = void 0;
+var zodPatterns = {
+  /**
+   * `c` was changed to `[cC]` to replicate /i flag
+   */
+  cuid: /^[cC][^\s-]{8,}$/,
+  cuid2: /^[0-9a-z]+$/,
+  ulid: /^[0-9A-HJKMNP-TV-Z]{26}$/,
+  /**
+   * `a-z` was added to replicate /i flag
+   */
+  email: /^(?!\.)(?!.*\.\.)([a-zA-Z0-9_'+\-\.]*)[a-zA-Z0-9_+-]@([a-zA-Z0-9][a-zA-Z0-9\-]*\.)+[a-zA-Z]{2,}$/,
+  /**
+   * Constructed a valid Unicode RegExp
+   *
+   * Lazily instantiate since this type of regex isn't supported
+   * in all envs (e.g. React Native).
+   *
+   * See:
+   * https://github.com/colinhacks/zod/issues/2433
+   * Fix in Zod:
+   * https://github.com/colinhacks/zod/commit/9340fd51e48576a75adc919bff65dbc4a5d4c99b
+   */
+  emoji: () => {
+    if (emojiRegex2 === void 0) {
+      emojiRegex2 = RegExp("^(\\p{Extended_Pictographic}|\\p{Emoji_Component})+$", "u");
+    }
+    return emojiRegex2;
+  },
+  /**
+   * Unused
+   */
+  uuid: /^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/,
+  /**
+   * Unused
+   */
+  ipv4: /^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])$/,
+  ipv4Cidr: /^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\/(3[0-2]|[12]?[0-9])$/,
+  /**
+   * Unused
+   */
+  ipv6: /^(([a-f0-9]{1,4}:){7}|::([a-f0-9]{1,4}:){0,6}|([a-f0-9]{1,4}:){1}:([a-f0-9]{1,4}:){0,5}|([a-f0-9]{1,4}:){2}:([a-f0-9]{1,4}:){0,4}|([a-f0-9]{1,4}:){3}:([a-f0-9]{1,4}:){0,3}|([a-f0-9]{1,4}:){4}:([a-f0-9]{1,4}:){0,2}|([a-f0-9]{1,4}:){5}:([a-f0-9]{1,4}:){0,1})([a-f0-9]{1,4}|(((25[0-5])|(2[0-4][0-9])|(1[0-9]{2})|([0-9]{1,2}))\.){3}((25[0-5])|(2[0-4][0-9])|(1[0-9]{2})|([0-9]{1,2})))$/,
+  ipv6Cidr: /^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))\/(12[0-8]|1[01][0-9]|[1-9]?[0-9])$/,
+  base64: /^([0-9a-zA-Z+/]{4})*(([0-9a-zA-Z+/]{2}==)|([0-9a-zA-Z+/]{3}=))?$/,
+  base64url: /^([0-9a-zA-Z-_]{4})*(([0-9a-zA-Z-_]{2}(==)?)|([0-9a-zA-Z-_]{3}(=)?))?$/,
+  nanoid: /^[a-zA-Z0-9_-]{21}$/,
+  jwt: /^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]*$/
+};
+function parseStringDef(def, refs) {
+  const res = {
+    type: "string"
+  };
+  if (def.checks) {
+    for (const check of def.checks) {
+      switch (check.kind) {
+        case "min":
+          setResponseValueAndErrors(res, "minLength", typeof res.minLength === "number" ? Math.max(res.minLength, check.value) : check.value, check.message, refs);
+          break;
+        case "max":
+          setResponseValueAndErrors(res, "maxLength", typeof res.maxLength === "number" ? Math.min(res.maxLength, check.value) : check.value, check.message, refs);
+          break;
+        case "email":
+          switch (refs.emailStrategy) {
+            case "format:email":
+              addFormat(res, "email", check.message, refs);
+              break;
+            case "format:idn-email":
+              addFormat(res, "idn-email", check.message, refs);
+              break;
+            case "pattern:zod":
+              addPattern(res, zodPatterns.email, check.message, refs);
+              break;
+          }
+          break;
+        case "url":
+          addFormat(res, "uri", check.message, refs);
+          break;
+        case "uuid":
+          addFormat(res, "uuid", check.message, refs);
+          break;
+        case "regex":
+          addPattern(res, check.regex, check.message, refs);
+          break;
+        case "cuid":
+          addPattern(res, zodPatterns.cuid, check.message, refs);
+          break;
+        case "cuid2":
+          addPattern(res, zodPatterns.cuid2, check.message, refs);
+          break;
+        case "startsWith":
+          addPattern(res, RegExp(`^${escapeLiteralCheckValue(check.value, refs)}`), check.message, refs);
+          break;
+        case "endsWith":
+          addPattern(res, RegExp(`${escapeLiteralCheckValue(check.value, refs)}$`), check.message, refs);
+          break;
+        case "datetime":
+          addFormat(res, "date-time", check.message, refs);
+          break;
+        case "date":
+          addFormat(res, "date", check.message, refs);
+          break;
+        case "time":
+          addFormat(res, "time", check.message, refs);
+          break;
+        case "duration":
+          addFormat(res, "duration", check.message, refs);
+          break;
+        case "length":
+          setResponseValueAndErrors(res, "minLength", typeof res.minLength === "number" ? Math.max(res.minLength, check.value) : check.value, check.message, refs);
+          setResponseValueAndErrors(res, "maxLength", typeof res.maxLength === "number" ? Math.min(res.maxLength, check.value) : check.value, check.message, refs);
+          break;
+        case "includes": {
+          addPattern(res, RegExp(escapeLiteralCheckValue(check.value, refs)), check.message, refs);
+          break;
+        }
+        case "ip": {
+          if (check.version !== "v6") {
+            addFormat(res, "ipv4", check.message, refs);
+          }
+          if (check.version !== "v4") {
+            addFormat(res, "ipv6", check.message, refs);
+          }
+          break;
+        }
+        case "base64url":
+          addPattern(res, zodPatterns.base64url, check.message, refs);
+          break;
+        case "jwt":
+          addPattern(res, zodPatterns.jwt, check.message, refs);
+          break;
+        case "cidr": {
+          if (check.version !== "v6") {
+            addPattern(res, zodPatterns.ipv4Cidr, check.message, refs);
+          }
+          if (check.version !== "v4") {
+            addPattern(res, zodPatterns.ipv6Cidr, check.message, refs);
+          }
+          break;
+        }
+        case "emoji":
+          addPattern(res, zodPatterns.emoji(), check.message, refs);
+          break;
+        case "ulid": {
+          addPattern(res, zodPatterns.ulid, check.message, refs);
+          break;
+        }
+        case "base64": {
+          switch (refs.base64Strategy) {
+            case "format:binary": {
+              addFormat(res, "binary", check.message, refs);
+              break;
+            }
+            case "contentEncoding:base64": {
+              setResponseValueAndErrors(res, "contentEncoding", "base64", check.message, refs);
+              break;
+            }
+            case "pattern:zod": {
+              addPattern(res, zodPatterns.base64, check.message, refs);
+              break;
+            }
+          }
+          break;
+        }
+        case "nanoid": {
+          addPattern(res, zodPatterns.nanoid, check.message, refs);
+        }
+        case "toLowerCase":
+        case "toUpperCase":
+        case "trim":
+          break;
+        default:
+          /* @__PURE__ */ ((_) => {
+          })(check);
+      }
+    }
+  }
+  return res;
+}
+function escapeLiteralCheckValue(literal, refs) {
+  return refs.patternStrategy === "escape" ? escapeNonAlphaNumeric(literal) : literal;
+}
+var ALPHA_NUMERIC = new Set("ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvxyz0123456789");
+function escapeNonAlphaNumeric(source) {
+  let result = "";
+  for (let i = 0; i < source.length; i++) {
+    if (!ALPHA_NUMERIC.has(source[i])) {
+      result += "\\";
+    }
+    result += source[i];
+  }
+  return result;
+}
+function addFormat(schema, value, message, refs) {
+  if (schema.format || schema.anyOf?.some((x) => x.format)) {
+    if (!schema.anyOf) {
+      schema.anyOf = [];
+    }
+    if (schema.format) {
+      schema.anyOf.push({
+        format: schema.format,
+        ...schema.errorMessage && refs.errorMessages && {
+          errorMessage: { format: schema.errorMessage.format }
+        }
+      });
+      delete schema.format;
+      if (schema.errorMessage) {
+        delete schema.errorMessage.format;
+        if (Object.keys(schema.errorMessage).length === 0) {
+          delete schema.errorMessage;
+        }
+      }
+    }
+    schema.anyOf.push({
+      format: value,
+      ...message && refs.errorMessages && { errorMessage: { format: message } }
+    });
+  } else {
+    setResponseValueAndErrors(schema, "format", value, message, refs);
+  }
+}
+function addPattern(schema, regex, message, refs) {
+  if (schema.pattern || schema.allOf?.some((x) => x.pattern)) {
+    if (!schema.allOf) {
+      schema.allOf = [];
+    }
+    if (schema.pattern) {
+      schema.allOf.push({
+        pattern: schema.pattern,
+        ...schema.errorMessage && refs.errorMessages && {
+          errorMessage: { pattern: schema.errorMessage.pattern }
+        }
+      });
+      delete schema.pattern;
+      if (schema.errorMessage) {
+        delete schema.errorMessage.pattern;
+        if (Object.keys(schema.errorMessage).length === 0) {
+          delete schema.errorMessage;
+        }
+      }
+    }
+    schema.allOf.push({
+      pattern: stringifyRegExpWithFlags(regex, refs),
+      ...message && refs.errorMessages && { errorMessage: { pattern: message } }
+    });
+  } else {
+    setResponseValueAndErrors(schema, "pattern", stringifyRegExpWithFlags(regex, refs), message, refs);
+  }
+}
+function stringifyRegExpWithFlags(regex, refs) {
+  if (!refs.applyRegexFlags || !regex.flags) {
+    return regex.source;
+  }
+  const flags = {
+    i: regex.flags.includes("i"),
+    m: regex.flags.includes("m"),
+    s: regex.flags.includes("s")
+    // `.` matches newlines
+  };
+  const source = flags.i ? regex.source.toLowerCase() : regex.source;
+  let pattern = "";
+  let isEscaped = false;
+  let inCharGroup = false;
+  let inCharRange = false;
+  for (let i = 0; i < source.length; i++) {
+    if (isEscaped) {
+      pattern += source[i];
+      isEscaped = false;
+      continue;
+    }
+    if (flags.i) {
+      if (inCharGroup) {
+        if (source[i].match(/[a-z]/)) {
+          if (inCharRange) {
+            pattern += source[i];
+            pattern += `${source[i - 2]}-${source[i]}`.toUpperCase();
+            inCharRange = false;
+          } else if (source[i + 1] === "-" && source[i + 2]?.match(/[a-z]/)) {
+            pattern += source[i];
+            inCharRange = true;
+          } else {
+            pattern += `${source[i]}${source[i].toUpperCase()}`;
+          }
+          continue;
+        }
+      } else if (source[i].match(/[a-z]/)) {
+        pattern += `[${source[i]}${source[i].toUpperCase()}]`;
+        continue;
+      }
+    }
+    if (flags.m) {
+      if (source[i] === "^") {
+        pattern += `(^|(?<=[\r
+]))`;
+        continue;
+      } else if (source[i] === "$") {
+        pattern += `($|(?=[\r
+]))`;
+        continue;
+      }
+    }
+    if (flags.s && source[i] === ".") {
+      pattern += inCharGroup ? `${source[i]}\r
+` : `[${source[i]}\r
+]`;
+      continue;
+    }
+    pattern += source[i];
+    if (source[i] === "\\") {
+      isEscaped = true;
+    } else if (inCharGroup && source[i] === "]") {
+      inCharGroup = false;
+    } else if (!inCharGroup && source[i] === "[") {
+      inCharGroup = true;
+    }
+  }
+  try {
+    new RegExp(pattern);
+  } catch {
+    console.warn(`Could not convert regex pattern at ${refs.currentPath.join("/")} to a flag-independent form! Falling back to the flag-ignorant source`);
+    return regex.source;
+  }
+  return pattern;
+}
+
+// node_modules/zod-to-json-schema/dist/esm/parsers/record.js
+function parseRecordDef(def, refs) {
+  if (refs.target === "openAi") {
+    console.warn("Warning: OpenAI may not support records in schemas! Try an array of key-value pairs instead.");
+  }
+  if (refs.target === "openApi3" && def.keyType?._def.typeName === ZodFirstPartyTypeKind.ZodEnum) {
+    return {
+      type: "object",
+      required: def.keyType._def.values,
+      properties: def.keyType._def.values.reduce((acc, key) => ({
+        ...acc,
+        [key]: parseDef(def.valueType._def, {
+          ...refs,
+          currentPath: [...refs.currentPath, "properties", key]
+        }) ?? parseAnyDef(refs)
+      }), {}),
+      additionalProperties: refs.rejectedAdditionalProperties
+    };
+  }
+  const schema = {
+    type: "object",
+    additionalProperties: parseDef(def.valueType._def, {
+      ...refs,
+      currentPath: [...refs.currentPath, "additionalProperties"]
+    }) ?? refs.allowedAdditionalProperties
+  };
+  if (refs.target === "openApi3") {
+    return schema;
+  }
+  if (def.keyType?._def.typeName === ZodFirstPartyTypeKind.ZodString && def.keyType._def.checks?.length) {
+    const { type, ...keyType } = parseStringDef(def.keyType._def, refs);
+    return {
+      ...schema,
+      propertyNames: keyType
+    };
+  } else if (def.keyType?._def.typeName === ZodFirstPartyTypeKind.ZodEnum) {
+    return {
+      ...schema,
+      propertyNames: {
+        enum: def.keyType._def.values
+      }
+    };
+  } else if (def.keyType?._def.typeName === ZodFirstPartyTypeKind.ZodBranded && def.keyType._def.type._def.typeName === ZodFirstPartyTypeKind.ZodString && def.keyType._def.type._def.checks?.length) {
+    const { type, ...keyType } = parseBrandedDef(def.keyType._def, refs);
+    return {
+      ...schema,
+      propertyNames: keyType
+    };
+  }
+  return schema;
+}
+
+// node_modules/zod-to-json-schema/dist/esm/parsers/map.js
+function parseMapDef(def, refs) {
+  if (refs.mapStrategy === "record") {
+    return parseRecordDef(def, refs);
+  }
+  const keys = parseDef(def.keyType._def, {
+    ...refs,
+    currentPath: [...refs.currentPath, "items", "items", "0"]
+  }) || parseAnyDef(refs);
+  const values = parseDef(def.valueType._def, {
+    ...refs,
+    currentPath: [...refs.currentPath, "items", "items", "1"]
+  }) || parseAnyDef(refs);
+  return {
+    type: "array",
+    maxItems: 125,
+    items: {
+      type: "array",
+      items: [keys, values],
+      minItems: 2,
+      maxItems: 2
+    }
+  };
+}
+
+// node_modules/zod-to-json-schema/dist/esm/parsers/nativeEnum.js
+function parseNativeEnumDef(def) {
+  const object = def.values;
+  const actualKeys = Object.keys(def.values).filter((key) => {
+    return typeof object[object[key]] !== "number";
+  });
+  const actualValues = actualKeys.map((key) => object[key]);
+  const parsedTypes = Array.from(new Set(actualValues.map((values) => typeof values)));
+  return {
+    type: parsedTypes.length === 1 ? parsedTypes[0] === "string" ? "string" : "number" : ["string", "number"],
+    enum: actualValues
+  };
+}
+
+// node_modules/zod-to-json-schema/dist/esm/parsers/never.js
+function parseNeverDef(refs) {
+  return refs.target === "openAi" ? void 0 : {
+    not: parseAnyDef({
+      ...refs,
+      currentPath: [...refs.currentPath, "not"]
+    })
+  };
+}
+
+// node_modules/zod-to-json-schema/dist/esm/parsers/null.js
+function parseNullDef(refs) {
+  return refs.target === "openApi3" ? {
+    enum: ["null"],
+    nullable: true
+  } : {
+    type: "null"
+  };
+}
+
+// node_modules/zod-to-json-schema/dist/esm/parsers/union.js
+var primitiveMappings = {
+  ZodString: "string",
+  ZodNumber: "number",
+  ZodBigInt: "integer",
+  ZodBoolean: "boolean",
+  ZodNull: "null"
+};
+function parseUnionDef(def, refs) {
+  if (refs.target === "openApi3")
+    return asAnyOf(def, refs);
+  const options = def.options instanceof Map ? Array.from(def.options.values()) : def.options;
+  if (options.every((x) => x._def.typeName in primitiveMappings && (!x._def.checks || !x._def.checks.length))) {
+    const types = options.reduce((types2, x) => {
+      const type = primitiveMappings[x._def.typeName];
+      return type && !types2.includes(type) ? [...types2, type] : types2;
+    }, []);
+    return {
+      type: types.length > 1 ? types : types[0]
+    };
+  } else if (options.every((x) => x._def.typeName === "ZodLiteral" && !x.description)) {
+    const types = options.reduce((acc, x) => {
+      const type = typeof x._def.value;
+      switch (type) {
+        case "string":
+        case "number":
+        case "boolean":
+          return [...acc, type];
+        case "bigint":
+          return [...acc, "integer"];
+        case "object":
+          if (x._def.value === null)
+            return [...acc, "null"];
+        case "symbol":
+        case "undefined":
+        case "function":
+        default:
+          return acc;
+      }
+    }, []);
+    if (types.length === options.length) {
+      const uniqueTypes = types.filter((x, i, a) => a.indexOf(x) === i);
+      return {
+        type: uniqueTypes.length > 1 ? uniqueTypes : uniqueTypes[0],
+        enum: options.reduce((acc, x) => {
+          return acc.includes(x._def.value) ? acc : [...acc, x._def.value];
+        }, [])
+      };
+    }
+  } else if (options.every((x) => x._def.typeName === "ZodEnum")) {
+    return {
+      type: "string",
+      enum: options.reduce((acc, x) => [
+        ...acc,
+        ...x._def.values.filter((x2) => !acc.includes(x2))
+      ], [])
+    };
+  }
+  return asAnyOf(def, refs);
+}
+var asAnyOf = (def, refs) => {
+  const anyOf = (def.options instanceof Map ? Array.from(def.options.values()) : def.options).map((x, i) => parseDef(x._def, {
+    ...refs,
+    currentPath: [...refs.currentPath, "anyOf", `${i}`]
+  })).filter((x) => !!x && (!refs.strictUnions || typeof x === "object" && Object.keys(x).length > 0));
+  return anyOf.length ? { anyOf } : void 0;
+};
+
+// node_modules/zod-to-json-schema/dist/esm/parsers/nullable.js
+function parseNullableDef(def, refs) {
+  if (["ZodString", "ZodNumber", "ZodBigInt", "ZodBoolean", "ZodNull"].includes(def.innerType._def.typeName) && (!def.innerType._def.checks || !def.innerType._def.checks.length)) {
+    if (refs.target === "openApi3") {
+      return {
+        type: primitiveMappings[def.innerType._def.typeName],
+        nullable: true
+      };
+    }
+    return {
+      type: [
+        primitiveMappings[def.innerType._def.typeName],
+        "null"
+      ]
+    };
+  }
+  if (refs.target === "openApi3") {
+    const base2 = parseDef(def.innerType._def, {
+      ...refs,
+      currentPath: [...refs.currentPath]
+    });
+    if (base2 && "$ref" in base2)
+      return { allOf: [base2], nullable: true };
+    return base2 && { ...base2, nullable: true };
+  }
+  const base = parseDef(def.innerType._def, {
+    ...refs,
+    currentPath: [...refs.currentPath, "anyOf", "0"]
+  });
+  return base && { anyOf: [base, { type: "null" }] };
+}
+
+// node_modules/zod-to-json-schema/dist/esm/parsers/number.js
+function parseNumberDef(def, refs) {
+  const res = {
+    type: "number"
+  };
+  if (!def.checks)
+    return res;
+  for (const check of def.checks) {
+    switch (check.kind) {
+      case "int":
+        res.type = "integer";
+        addErrorMessage(res, "type", check.message, refs);
+        break;
+      case "min":
+        if (refs.target === "jsonSchema7") {
+          if (check.inclusive) {
+            setResponseValueAndErrors(res, "minimum", check.value, check.message, refs);
+          } else {
+            setResponseValueAndErrors(res, "exclusiveMinimum", check.value, check.message, refs);
+          }
+        } else {
+          if (!check.inclusive) {
+            res.exclusiveMinimum = true;
+          }
+          setResponseValueAndErrors(res, "minimum", check.value, check.message, refs);
+        }
+        break;
+      case "max":
+        if (refs.target === "jsonSchema7") {
+          if (check.inclusive) {
+            setResponseValueAndErrors(res, "maximum", check.value, check.message, refs);
+          } else {
+            setResponseValueAndErrors(res, "exclusiveMaximum", check.value, check.message, refs);
+          }
+        } else {
+          if (!check.inclusive) {
+            res.exclusiveMaximum = true;
+          }
+          setResponseValueAndErrors(res, "maximum", check.value, check.message, refs);
+        }
+        break;
+      case "multipleOf":
+        setResponseValueAndErrors(res, "multipleOf", check.value, check.message, refs);
+        break;
+    }
+  }
+  return res;
+}
+
+// node_modules/zod-to-json-schema/dist/esm/parsers/object.js
+function parseObjectDef(def, refs) {
+  const forceOptionalIntoNullable = refs.target === "openAi";
+  const result = {
+    type: "object",
+    properties: {}
+  };
+  const required = [];
+  const shape = def.shape();
+  for (const propName in shape) {
+    let propDef = shape[propName];
+    if (propDef === void 0 || propDef._def === void 0) {
+      continue;
+    }
+    let propOptional = safeIsOptional(propDef);
+    if (propOptional && forceOptionalIntoNullable) {
+      if (propDef._def.typeName === "ZodOptional") {
+        propDef = propDef._def.innerType;
+      }
+      if (!propDef.isNullable()) {
+        propDef = propDef.nullable();
+      }
+      propOptional = false;
+    }
+    const parsedDef = parseDef(propDef._def, {
+      ...refs,
+      currentPath: [...refs.currentPath, "properties", propName],
+      propertyPath: [...refs.currentPath, "properties", propName]
+    });
+    if (parsedDef === void 0) {
+      continue;
+    }
+    result.properties[propName] = parsedDef;
+    if (!propOptional) {
+      required.push(propName);
+    }
+  }
+  if (required.length) {
+    result.required = required;
+  }
+  const additionalProperties = decideAdditionalProperties(def, refs);
+  if (additionalProperties !== void 0) {
+    result.additionalProperties = additionalProperties;
+  }
+  return result;
+}
+function decideAdditionalProperties(def, refs) {
+  if (def.catchall._def.typeName !== "ZodNever") {
+    return parseDef(def.catchall._def, {
+      ...refs,
+      currentPath: [...refs.currentPath, "additionalProperties"]
+    });
+  }
+  switch (def.unknownKeys) {
+    case "passthrough":
+      return refs.allowedAdditionalProperties;
+    case "strict":
+      return refs.rejectedAdditionalProperties;
+    case "strip":
+      return refs.removeAdditionalStrategy === "strict" ? refs.allowedAdditionalProperties : refs.rejectedAdditionalProperties;
+  }
+}
+function safeIsOptional(schema) {
+  try {
+    return schema.isOptional();
+  } catch {
+    return true;
+  }
+}
+
+// node_modules/zod-to-json-schema/dist/esm/parsers/optional.js
+var parseOptionalDef = (def, refs) => {
+  if (refs.currentPath.toString() === refs.propertyPath?.toString()) {
+    return parseDef(def.innerType._def, refs);
+  }
+  const innerSchema = parseDef(def.innerType._def, {
+    ...refs,
+    currentPath: [...refs.currentPath, "anyOf", "1"]
+  });
+  return innerSchema ? {
+    anyOf: [
+      {
+        not: parseAnyDef(refs)
+      },
+      innerSchema
+    ]
+  } : parseAnyDef(refs);
+};
+
+// node_modules/zod-to-json-schema/dist/esm/parsers/pipeline.js
+var parsePipelineDef = (def, refs) => {
+  if (refs.pipeStrategy === "input") {
+    return parseDef(def.in._def, refs);
+  } else if (refs.pipeStrategy === "output") {
+    return parseDef(def.out._def, refs);
+  }
+  const a = parseDef(def.in._def, {
+    ...refs,
+    currentPath: [...refs.currentPath, "allOf", "0"]
+  });
+  const b = parseDef(def.out._def, {
+    ...refs,
+    currentPath: [...refs.currentPath, "allOf", a ? "1" : "0"]
+  });
+  return {
+    allOf: [a, b].filter((x) => x !== void 0)
+  };
+};
+
+// node_modules/zod-to-json-schema/dist/esm/parsers/promise.js
+function parsePromiseDef(def, refs) {
+  return parseDef(def.type._def, refs);
+}
+
+// node_modules/zod-to-json-schema/dist/esm/parsers/set.js
+function parseSetDef(def, refs) {
+  const items = parseDef(def.valueType._def, {
+    ...refs,
+    currentPath: [...refs.currentPath, "items"]
+  });
+  const schema = {
+    type: "array",
+    uniqueItems: true,
+    items
+  };
+  if (def.minSize) {
+    setResponseValueAndErrors(schema, "minItems", def.minSize.value, def.minSize.message, refs);
+  }
+  if (def.maxSize) {
+    setResponseValueAndErrors(schema, "maxItems", def.maxSize.value, def.maxSize.message, refs);
+  }
+  return schema;
+}
+
+// node_modules/zod-to-json-schema/dist/esm/parsers/tuple.js
+function parseTupleDef(def, refs) {
+  if (def.rest) {
+    return {
+      type: "array",
+      minItems: def.items.length,
+      items: def.items.map((x, i) => parseDef(x._def, {
+        ...refs,
+        currentPath: [...refs.currentPath, "items", `${i}`]
+      })).reduce((acc, x) => x === void 0 ? acc : [...acc, x], []),
+      additionalItems: parseDef(def.rest._def, {
+        ...refs,
+        currentPath: [...refs.currentPath, "additionalItems"]
+      })
+    };
+  } else {
+    return {
+      type: "array",
+      minItems: def.items.length,
+      maxItems: def.items.length,
+      items: def.items.map((x, i) => parseDef(x._def, {
+        ...refs,
+        currentPath: [...refs.currentPath, "items", `${i}`]
+      })).reduce((acc, x) => x === void 0 ? acc : [...acc, x], [])
+    };
+  }
+}
+
+// node_modules/zod-to-json-schema/dist/esm/parsers/undefined.js
+function parseUndefinedDef(refs) {
+  return {
+    not: parseAnyDef(refs)
+  };
+}
+
+// node_modules/zod-to-json-schema/dist/esm/parsers/unknown.js
+function parseUnknownDef(refs) {
+  return parseAnyDef(refs);
+}
+
+// node_modules/zod-to-json-schema/dist/esm/parsers/readonly.js
+var parseReadonlyDef = (def, refs) => {
+  return parseDef(def.innerType._def, refs);
+};
+
+// node_modules/zod-to-json-schema/dist/esm/selectParser.js
+var selectParser = (def, typeName, refs) => {
+  switch (typeName) {
+    case ZodFirstPartyTypeKind.ZodString:
+      return parseStringDef(def, refs);
+    case ZodFirstPartyTypeKind.ZodNumber:
+      return parseNumberDef(def, refs);
+    case ZodFirstPartyTypeKind.ZodObject:
+      return parseObjectDef(def, refs);
+    case ZodFirstPartyTypeKind.ZodBigInt:
+      return parseBigintDef(def, refs);
+    case ZodFirstPartyTypeKind.ZodBoolean:
+      return parseBooleanDef();
+    case ZodFirstPartyTypeKind.ZodDate:
+      return parseDateDef(def, refs);
+    case ZodFirstPartyTypeKind.ZodUndefined:
+      return parseUndefinedDef(refs);
+    case ZodFirstPartyTypeKind.ZodNull:
+      return parseNullDef(refs);
+    case ZodFirstPartyTypeKind.ZodArray:
+      return parseArrayDef(def, refs);
+    case ZodFirstPartyTypeKind.ZodUnion:
+    case ZodFirstPartyTypeKind.ZodDiscriminatedUnion:
+      return parseUnionDef(def, refs);
+    case ZodFirstPartyTypeKind.ZodIntersection:
+      return parseIntersectionDef(def, refs);
+    case ZodFirstPartyTypeKind.ZodTuple:
+      return parseTupleDef(def, refs);
+    case ZodFirstPartyTypeKind.ZodRecord:
+      return parseRecordDef(def, refs);
+    case ZodFirstPartyTypeKind.ZodLiteral:
+      return parseLiteralDef(def, refs);
+    case ZodFirstPartyTypeKind.ZodEnum:
+      return parseEnumDef(def);
+    case ZodFirstPartyTypeKind.ZodNativeEnum:
+      return parseNativeEnumDef(def);
+    case ZodFirstPartyTypeKind.ZodNullable:
+      return parseNullableDef(def, refs);
+    case ZodFirstPartyTypeKind.ZodOptional:
+      return parseOptionalDef(def, refs);
+    case ZodFirstPartyTypeKind.ZodMap:
+      return parseMapDef(def, refs);
+    case ZodFirstPartyTypeKind.ZodSet:
+      return parseSetDef(def, refs);
+    case ZodFirstPartyTypeKind.ZodLazy:
+      return () => def.getter()._def;
+    case ZodFirstPartyTypeKind.ZodPromise:
+      return parsePromiseDef(def, refs);
+    case ZodFirstPartyTypeKind.ZodNaN:
+    case ZodFirstPartyTypeKind.ZodNever:
+      return parseNeverDef(refs);
+    case ZodFirstPartyTypeKind.ZodEffects:
+      return parseEffectsDef(def, refs);
+    case ZodFirstPartyTypeKind.ZodAny:
+      return parseAnyDef(refs);
+    case ZodFirstPartyTypeKind.ZodUnknown:
+      return parseUnknownDef(refs);
+    case ZodFirstPartyTypeKind.ZodDefault:
+      return parseDefaultDef(def, refs);
+    case ZodFirstPartyTypeKind.ZodBranded:
+      return parseBrandedDef(def, refs);
+    case ZodFirstPartyTypeKind.ZodReadonly:
+      return parseReadonlyDef(def, refs);
+    case ZodFirstPartyTypeKind.ZodCatch:
+      return parseCatchDef(def, refs);
+    case ZodFirstPartyTypeKind.ZodPipeline:
+      return parsePipelineDef(def, refs);
+    case ZodFirstPartyTypeKind.ZodFunction:
+    case ZodFirstPartyTypeKind.ZodVoid:
+    case ZodFirstPartyTypeKind.ZodSymbol:
+      return void 0;
+    default:
+      return /* @__PURE__ */ ((_) => void 0)(typeName);
+  }
+};
+
+// node_modules/zod-to-json-schema/dist/esm/parseDef.js
+function parseDef(def, refs, forceResolution = false) {
+  const seenItem = refs.seen.get(def);
+  if (refs.override) {
+    const overrideResult = refs.override?.(def, refs, seenItem, forceResolution);
+    if (overrideResult !== ignoreOverride) {
+      return overrideResult;
+    }
+  }
+  if (seenItem && !forceResolution) {
+    const seenSchema = get$ref(seenItem, refs);
+    if (seenSchema !== void 0) {
+      return seenSchema;
+    }
+  }
+  const newItem = { def, path: refs.currentPath, jsonSchema: void 0 };
+  refs.seen.set(def, newItem);
+  const jsonSchemaOrGetter = selectParser(def, def.typeName, refs);
+  const jsonSchema = typeof jsonSchemaOrGetter === "function" ? parseDef(jsonSchemaOrGetter(), refs) : jsonSchemaOrGetter;
+  if (jsonSchema) {
+    addMeta(def, refs, jsonSchema);
+  }
+  if (refs.postProcess) {
+    const postProcessResult = refs.postProcess(jsonSchema, def, refs);
+    newItem.jsonSchema = jsonSchema;
+    return postProcessResult;
+  }
+  newItem.jsonSchema = jsonSchema;
+  return jsonSchema;
+}
+var get$ref = (item, refs) => {
+  switch (refs.$refStrategy) {
+    case "root":
+      return { $ref: item.path.join("/") };
+    case "relative":
+      return { $ref: getRelativePath(refs.currentPath, item.path) };
+    case "none":
+    case "seen": {
+      if (item.path.length < refs.currentPath.length && item.path.every((value, index) => refs.currentPath[index] === value)) {
+        console.warn(`Recursive reference detected at ${refs.currentPath.join("/")}! Defaulting to any`);
+        return parseAnyDef(refs);
+      }
+      return refs.$refStrategy === "seen" ? parseAnyDef(refs) : void 0;
+    }
+  }
+};
+var addMeta = (def, refs, jsonSchema) => {
+  if (def.description) {
+    jsonSchema.description = def.description;
+    if (refs.markdownDescription) {
+      jsonSchema.markdownDescription = def.description;
+    }
+  }
+  return jsonSchema;
+};
+
+// node_modules/zod-to-json-schema/dist/esm/zodToJsonSchema.js
+var zodToJsonSchema = (schema, options) => {
+  const refs = getRefs(options);
+  let definitions = typeof options === "object" && options.definitions ? Object.entries(options.definitions).reduce((acc, [name2, schema2]) => ({
+    ...acc,
+    [name2]: parseDef(schema2._def, {
+      ...refs,
+      currentPath: [...refs.basePath, refs.definitionPath, name2]
+    }, true) ?? parseAnyDef(refs)
+  }), {}) : void 0;
+  const name = typeof options === "string" ? options : options?.nameStrategy === "title" ? void 0 : options?.name;
+  const main2 = parseDef(schema._def, name === void 0 ? refs : {
+    ...refs,
+    currentPath: [...refs.basePath, refs.definitionPath, name]
+  }, false) ?? parseAnyDef(refs);
+  const title = typeof options === "object" && options.name !== void 0 && options.nameStrategy === "title" ? options.name : void 0;
+  if (title !== void 0) {
+    main2.title = title;
+  }
+  if (refs.flags.hasReferencedOpenAiAnyType) {
+    if (!definitions) {
+      definitions = {};
+    }
+    if (!definitions[refs.openAiAnyTypeName]) {
+      definitions[refs.openAiAnyTypeName] = {
+        // Skipping "object" as no properties can be defined and additionalProperties must be "false"
+        type: ["string", "number", "integer", "boolean", "array", "null"],
+        items: {
+          $ref: refs.$refStrategy === "relative" ? "1" : [
+            ...refs.basePath,
+            refs.definitionPath,
+            refs.openAiAnyTypeName
+          ].join("/")
+        }
+      };
+    }
+  }
+  const combined = name === void 0 ? definitions ? {
+    ...main2,
+    [refs.definitionPath]: definitions
+  } : main2 : {
+    $ref: [
+      ...refs.$refStrategy === "relative" ? [] : refs.basePath,
+      refs.definitionPath,
+      name
+    ].join("/"),
+    [refs.definitionPath]: {
+      ...definitions,
+      [name]: main2
+    }
+  };
+  if (refs.target === "jsonSchema7") {
+    combined.$schema = "http://json-schema.org/draft-07/schema#";
+  } else if (refs.target === "jsonSchema2019-09" || refs.target === "openAi") {
+    combined.$schema = "https://json-schema.org/draft/2019-09/schema#";
+  }
+  if (refs.target === "openAi" && ("anyOf" in combined || "oneOf" in combined || "allOf" in combined || "type" in combined && Array.isArray(combined.type))) {
+    console.warn("Warning: OpenAI may not support schemas with unions as roots! Try wrapping it in an object property.");
+  }
+  return combined;
+};
+
+// src/core/local-tools.ts
+var rateLimitBucketSchema = external_exports.object({
+  limit: external_exports.number(),
+  remaining: external_exports.number(),
+  reset: external_exports.number()
+});
+function createLocalToolset(backlog) {
+  const client = backlog;
+  return {
+    name: "backlog-api",
+    description: "Operations provided directly by the backlog-api Node runtime.",
+    enabled: false,
+    tools: [
+      {
+        name: "get_rate_limit",
+        description: "Get Backlog API rate limits for read, update, search, and icon requests.",
+        schema: external_exports.object({}).strict(),
+        outputSchema: external_exports.object({
+          rateLimit: external_exports.object({
+            read: rateLimitBucketSchema,
+            update: rateLimitBucketSchema,
+            search: rateLimitBucketSchema,
+            icon: rateLimitBucketSchema
+          })
+        }),
+        importantFields: ["rateLimit"],
+        async handler() {
+          return client.getRateLimit();
+        }
+      }
+    ]
+  };
+}
+
+// src/core/operation-input-constraints.ts
+var ISSUE_ID_OR_KEY_OPERATIONS = [
+  "add_issue_comment",
+  "delete_issue",
+  "get_issue",
+  "get_issue_comments",
+  "update_issue"
+];
+var PROJECT_ID_OR_KEY_OPERATIONS = [
+  "add_pull_request",
+  "add_pull_request_comment",
+  "add_version_milestone",
+  "delete_project",
+  "delete_version",
+  "get_categories",
+  "get_custom_fields",
+  "get_git_repositories",
+  "get_git_repository",
+  "get_issue_types",
+  "get_project",
+  "get_project_users",
+  "get_pull_request",
+  "get_pull_request_comments",
+  "get_pull_requests",
+  "get_pull_requests_count",
+  "get_version_milestone_list",
+  "get_wiki_pages",
+  "get_wikis_count",
+  "update_project",
+  "update_pull_request",
+  "update_pull_request_comment",
+  "update_version_milestone"
+];
+var REPOSITORY_ID_OR_NAME_OPERATIONS = [
+  "add_pull_request",
+  "add_pull_request_comment",
+  "get_git_repository",
+  "get_pull_request",
+  "get_pull_request_comments",
+  "get_pull_requests",
+  "get_pull_requests_count",
+  "update_pull_request",
+  "update_pull_request_comment"
+];
+var constraintsByOperation = /* @__PURE__ */ new Map();
+addConstraints(ISSUE_ID_OR_KEY_OPERATIONS, {
+  fields: ["issueId", "issueKey"],
+  message: "Issue ID or key is required."
+});
+addConstraints(PROJECT_ID_OR_KEY_OPERATIONS, {
+  fields: ["projectId", "projectKey"],
+  message: "Project ID or key is required."
+});
+addConstraints(REPOSITORY_ID_OR_NAME_OPERATIONS, {
+  fields: ["repoId", "repoName"],
+  message: "Repository ID or name is required."
+});
+function getAlternativeFieldConstraints(operation) {
+  return constraintsByOperation.get(operation) ?? [];
+}
+function validateOperationInputConstraints(operation, input) {
+  return getAlternativeFieldConstraints(operation).filter(
+    (constraint) => constraint.fields.every((field) => input[field] === void 0)
+  ).map((constraint) => ({
+    path: constraint.fields.join("|"),
+    message: constraint.message
+  }));
+}
+function addConstraints(operations, constraint) {
+  for (const operation of operations) {
+    const constraints = constraintsByOperation.get(operation) ?? [];
+    constraints.push(constraint);
+    constraintsByOperation.set(operation, constraints);
+  }
+}
+
 // src/core/catalog.ts
+var OPERATION_POLICIES = new Map([
+  ...policyEntries([
+    "count_issues",
+    "count_notifications",
+    "get_categories",
+    "get_custom_fields",
+    "get_document",
+    "get_document_tree",
+    "get_documents",
+    "get_git_repositories",
+    "get_git_repository",
+    "get_issue",
+    "get_issue_comments",
+    "get_issue_types",
+    "get_issues",
+    "get_myself",
+    "get_notifications",
+    "get_priorities",
+    "get_project",
+    "get_project_list",
+    "get_project_users",
+    "get_pull_request",
+    "get_pull_request_comments",
+    "get_pull_requests",
+    "get_pull_requests_count",
+    "get_rate_limit",
+    "get_resolutions",
+    "get_space",
+    "get_space_activities",
+    "get_user_recent_updates",
+    "get_user_stars_count",
+    "get_users",
+    "get_version_milestone_list",
+    "get_watching_list_count",
+    "get_watching_list_items",
+    "get_wiki",
+    "get_wiki_pages",
+    "get_wikis_count"
+  ], "read", "READ"),
+  ...policyEntries([
+    "addDocument",
+    "add_issue",
+    "add_issue_comment",
+    "add_project",
+    "add_pull_request",
+    "add_pull_request_comment",
+    "add_version_milestone",
+    "add_watching",
+    "add_wiki"
+  ], "mutation", "CREATE"),
+  ...policyEntries([
+    "mark_notification_as_read",
+    "mark_watching_as_read",
+    "update_issue",
+    "update_project",
+    "update_pull_request",
+    "update_pull_request_comment",
+    "update_version_milestone",
+    "update_watching",
+    "update_wiki"
+  ], "mutation", "UPDATE"),
+  ...policyEntries([
+    "delete_issue",
+    "delete_project",
+    "delete_version",
+    "delete_watching"
+  ], "destructive", "DELETE"),
+  ...policyEntries([
+    "reset_unread_notification_count"
+  ], "broad-mutation", "UPDATE")
+]);
 var fallbackTranslation = {
   t(_key, fallback) {
     return fallback;
@@ -29079,16 +30544,52 @@ var metadataOnlyClient = new Proxy({}, {
   }
 });
 function createToolsets(backlog = metadataOnlyClient) {
-  return allTools(backlog, fallbackTranslation).toolsets;
+  return [
+    ...allTools(backlog, fallbackTranslation).toolsets,
+    createLocalToolset(backlog)
+  ];
 }
 function listOperations() {
-  return createToolsets().flatMap((toolset) => toolset.tools.map((tool) => ({
-    name: tool.name,
-    description: tool.description,
-    toolset: toolset.name,
-    mutationClass: classifyMutation(tool.name),
-    requiredPermission: requiredPermission(tool.name)
-  }))).sort((left, right) => compareUtf16(left.name, right.name));
+  return createToolsets().flatMap((toolset) => toolset.tools.map((tool) => {
+    const policy = requireOperationPolicy(tool.name);
+    return {
+      name: tool.name,
+      description: tool.description,
+      toolset: toolset.name,
+      ...policy
+    };
+  })).sort((left, right) => compareUtf16(left.name, right.name));
+}
+function describeOperation(operationName) {
+  const resolved = resolveTool(metadataOnlyClient, operationName);
+  if (resolved === void 0) {
+    return void 0;
+  }
+  const policy = requireOperationPolicy(operationName);
+  const inputSchema = addCliInputMetadata(
+    toJsonSchema(resolved.tool.schema),
+    operationName
+  );
+  const outputSchema = resolved.tool.outputSchema === void 0 ? void 0 : toJsonSchema(resolved.tool.outputSchema);
+  const examples = OPERATION_EXAMPLES.get(operationName);
+  return {
+    name: resolved.tool.name,
+    description: resolved.tool.description,
+    toolset: resolved.toolset,
+    ...policy,
+    requiresConfirmation: policy.mutationClass === "destructive" || policy.mutationClass === "broad-mutation",
+    supportsDryRun: true,
+    credentialsRequiredForDryRun: false,
+    inputSchema,
+    ...outputSchema === void 0 ? {} : { outputFieldSchema: outputSchema },
+    ...resolved.tool.importantFields === void 0 ? {} : { importantOutputFields: resolved.tool.importantFields },
+    ...examples === void 0 ? {} : { examples }
+  };
+}
+function hasOperation(operationName) {
+  return createToolsets().some(
+    (toolset) => toolset.tools.some((tool) => tool.name === operationName)
+  );
 }
 function resolveTool(backlog, operationName) {
   for (const toolset of createToolsets(backlog)) {
@@ -29100,32 +30601,258 @@ function resolveTool(backlog, operationName) {
   return void 0;
 }
 function classifyMutation(operationName) {
-  if (operationName.startsWith("delete_")) {
-    return "destructive";
-  }
-  if (operationName === "reset_unread_notification_count") {
-    return "broad-mutation";
-  }
-  if (operationName.startsWith("add_") || operationName === "addDocument" || operationName.startsWith("update_") || operationName.startsWith("mark_")) {
-    return "mutation";
-  }
-  return "read";
+  return requireOperationPolicy(operationName).mutationClass;
 }
 function requiredPermission(operationName) {
-  const mutationClass = classifyMutation(operationName);
-  if (mutationClass === "read") {
-    return "READ";
+  return requireOperationPolicy(operationName).requiredPermission;
+}
+function requireOperationPolicy(operationName) {
+  const policy = OPERATION_POLICIES.get(operationName);
+  if (policy === void 0) {
+    throw new Error(`Operation ${operationName} has no declared access policy.`);
   }
-  if (mutationClass === "destructive") {
-    return "DELETE";
-  }
-  if (operationName.startsWith("add_") || operationName === "addDocument") {
-    return "CREATE";
-  }
-  return "UPDATE";
+  return policy;
+}
+function policyEntries(operationNames, mutationClass, requiredPermission2) {
+  return operationNames.map((operationName) => [
+    operationName,
+    { mutationClass, requiredPermission: requiredPermission2 }
+  ]);
 }
 function compareUtf16(left, right) {
   return left < right ? -1 : left > right ? 1 : 0;
+}
+var OPERATION_EXAMPLES = /* @__PURE__ */ new Map([
+  ["get_issue", [{ issueKey: "PROJ-1" }, { issueId: 12345 }]],
+  ["get_project", [{ projectKey: "PROJ" }, { projectId: 12345 }]],
+  ["get_rate_limit", [{}]],
+  [
+    "add_issue",
+    [{
+      projectId: 12345,
+      summary: "Example issue",
+      issueTypeId: 1,
+      priorityId: 3
+    }]
+  ],
+  ["delete_issue", [{ issueKey: "PROJ-1" }]]
+]);
+function toJsonSchema(schema) {
+  return zodToJsonSchema(
+    schema,
+    { target: "jsonSchema7" }
+  );
+}
+function addCliInputMetadata(schema, operationName) {
+  const properties = isJsonObject(schema.properties) ? schema.properties : {};
+  const constraints = getAlternativeFieldConstraints(operationName);
+  const existingAllOf = Array.isArray(schema.allOf) ? schema.allOf : [];
+  return {
+    ...schema,
+    properties: {
+      ...properties,
+      organization: {
+        type: "string",
+        description: "Configured Backlog organization name. Omit to use the default connection."
+      },
+      fields: {
+        type: "string",
+        description: 'GraphQL-style result field selection, for example "{ id summary }".'
+      }
+    },
+    ...constraints.length === 0 ? {} : {
+      allOf: [
+        ...existingAllOf,
+        ...constraints.map((constraint) => ({
+          description: constraint.message,
+          anyOf: constraint.fields.map((field) => ({
+            required: [field]
+          }))
+        }))
+      ]
+    }
+  };
+}
+function isJsonObject(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+// src/core/access-permissions.ts
+var BACKLOG_API_ALLOWED_PERMISSIONS = "BACKLOG_API_ALLOWED_PERMISSIONS";
+var DEFAULT_CRUD_PERMISSIONS = Object.freeze(
+  ["READ"]
+);
+var CRUD_PERMISSIONS = Object.freeze([
+  "READ",
+  "CREATE",
+  "UPDATE",
+  "DELETE"
+]);
+var SUPPORTED_PERMISSIONS = new Set(CRUD_PERMISSIONS);
+var CrudPermissionParseError = class extends Error {
+  invalidValues;
+  constructor(invalidValues) {
+    super("CRUD permissions contain empty or unsupported values.");
+    this.name = "CrudPermissionParseError";
+    this.invalidValues = invalidValues;
+  }
+};
+function parseCrudPermissions(value) {
+  const entries = value.split(",").map((entry) => entry.trim().toUpperCase());
+  const invalidValues = entries.filter(
+    (entry) => entry.length === 0 || !SUPPORTED_PERMISSIONS.has(entry)
+  );
+  if (invalidValues.length > 0) {
+    throw new CrudPermissionParseError(invalidValues);
+  }
+  return [...new Set(entries)];
+}
+function environmentAllowedPermissions(env) {
+  const value = env[BACKLOG_API_ALLOWED_PERMISSIONS];
+  if (value === void 0) {
+    return DEFAULT_CRUD_PERMISSIONS;
+  }
+  try {
+    return parseCrudPermissions(value);
+  } catch (error) {
+    if (!(error instanceof CrudPermissionParseError)) {
+      throw error;
+    }
+    throw new Error(
+      `${BACKLOG_API_ALLOWED_PERMISSIONS} must be a comma-separated list containing only READ, CREATE, UPDATE, and DELETE.`
+    );
+  }
+}
+
+// src/core/cli-arguments.ts
+var CliUsageError = class extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "CliUsageError";
+  }
+};
+function parseCliArguments(args) {
+  if (args.length === 0) {
+    return { kind: "help" };
+  }
+  if (args[0] === "call" && args.length === 3 && args[1] !== void 0 && !args[1].startsWith("--") && args[2] === "--help") {
+    return { kind: "tools-describe", operation: args[1] };
+  }
+  if (args.includes("--help")) {
+    return { kind: "help" };
+  }
+  if (args[0] === "help") {
+    requireArgumentCount(args, 1, "help");
+    return { kind: "help" };
+  }
+  if (args[0] === "--version") {
+    requireArgumentCount(args, 1, "--version");
+    return { kind: "version" };
+  }
+  if (args[0] === "tools" && args[1] === "list") {
+    requireArgumentCount(args, 2, "tools list");
+    return { kind: "tools-list" };
+  }
+  if (args[0] === "tools" && args[1] === "describe") {
+    const operation = args[2];
+    if (operation === void 0 || operation.startsWith("--")) {
+      throw new CliUsageError("tools describe requires an operation name.");
+    }
+    requireArgumentCount(args, 3, "tools describe");
+    return { kind: "tools-describe", operation };
+  }
+  if (args[0] === "trace") {
+    if (args.length > 2) {
+      throw new CliUsageError("trace accepts at most one operation name.");
+    }
+    const operation = args[1];
+    if (operation?.startsWith("--")) {
+      throw new CliUsageError(`Unknown option for trace: ${operation}.`);
+    }
+    return {
+      kind: "trace",
+      ...operation === void 0 ? {} : { operation }
+    };
+  }
+  if (args[0] === "call") {
+    return parseCallArguments(args);
+  }
+  throw new CliUsageError("Unknown command. Use --help for usage.");
+}
+function parseCallArguments(args) {
+  const operation = args[1];
+  if (operation === void 0 || operation.startsWith("--")) {
+    throw new CliUsageError("call requires an operation name.");
+  }
+  let inputPath = "-";
+  let allowedPermissions = DEFAULT_CRUD_PERMISSIONS;
+  let dryRun = false;
+  let confirmDestructive = false;
+  let verbose = false;
+  const seenOptions = /* @__PURE__ */ new Set();
+  for (let index = 2; index < args.length; index += 1) {
+    const argument = args[index];
+    if (!argument.startsWith("--")) {
+      throw new CliUsageError(`Unexpected argument for call: ${argument}.`);
+    }
+    if (seenOptions.has(argument)) {
+      throw new CliUsageError(`Option ${argument} may be specified only once.`);
+    }
+    seenOptions.add(argument);
+    if (argument === "--input" || argument === "--allow") {
+      const value = args[index + 1];
+      if (value === void 0 || value.startsWith("--")) {
+        throw new CliUsageError(`${argument} requires a value.`);
+      }
+      index += 1;
+      if (argument === "--input") {
+        inputPath = value;
+      } else {
+        allowedPermissions = parseAllowedPermissions(value);
+      }
+      continue;
+    }
+    if (argument === "--dry-run") {
+      dryRun = true;
+      continue;
+    }
+    if (argument === "--confirm-destructive") {
+      confirmDestructive = true;
+      continue;
+    }
+    if (argument === "--verbose") {
+      verbose = true;
+      continue;
+    }
+    throw new CliUsageError(`Unknown option for call: ${argument}.`);
+  }
+  return {
+    kind: "call",
+    operation,
+    inputPath,
+    allowedPermissions,
+    dryRun,
+    confirmDestructive,
+    verbose
+  };
+}
+function parseAllowedPermissions(value) {
+  try {
+    return parseCrudPermissions(value);
+  } catch (error) {
+    if (!(error instanceof CrudPermissionParseError)) {
+      throw error;
+    }
+    const invalid = error.invalidValues.map((entry) => entry.length === 0 ? "<empty>" : entry).join(", ");
+    throw new CliUsageError(
+      `--allow contains unsupported permission(s): ${invalid}. Use READ, CREATE, UPDATE, or DELETE.`
+    );
+  }
+}
+function requireArgumentCount(args, expected, command) {
+  if (args.length !== expected) {
+    throw new CliUsageError(`${command} does not accept additional arguments.`);
+  }
 }
 
 // docs/traceability/upstream-tool-mapping.json
@@ -29141,7 +30868,7 @@ var upstream_tool_mapping_default = {
   target: {
     repository: "backlog-api",
     product: "backlog-api",
-    version: "0.3.4",
+    version: "0.5.0",
     strategy: "published-handler-direct-invocation"
   },
   operations: [
@@ -29149,481 +30876,621 @@ var upstream_tool_mapping_default = {
       operation: "addDocument",
       toolset: "document",
       mutationClass: "mutation",
+      origin: "upstream",
       upstreamSource: "src/tools/addDocument.ts",
       upstreamTest: "src/tools/addDocument.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "add_issue",
       toolset: "issue",
       mutationClass: "mutation",
+      origin: "upstream",
       upstreamSource: "src/tools/addIssue.ts",
       upstreamTest: "src/tools/addIssue.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "add_issue_comment",
       toolset: "issue",
       mutationClass: "mutation",
+      origin: "upstream",
       upstreamSource: "src/tools/addIssueComment.ts",
       upstreamTest: "src/tools/addIssueComment.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "add_project",
       toolset: "project",
       mutationClass: "mutation",
+      origin: "upstream",
       upstreamSource: "src/tools/addProject.ts",
       upstreamTest: "src/tools/addProject.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "add_pull_request",
       toolset: "git",
       mutationClass: "mutation",
+      origin: "upstream",
       upstreamSource: "src/tools/addPullRequest.ts",
       upstreamTest: "src/tools/addPullRequest.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "add_pull_request_comment",
       toolset: "git",
       mutationClass: "mutation",
+      origin: "upstream",
       upstreamSource: "src/tools/addPullRequestComment.ts",
       upstreamTest: "src/tools/addPullRequestComment.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "add_version_milestone",
       toolset: "issue",
       mutationClass: "mutation",
+      origin: "upstream",
       upstreamSource: "src/tools/addVersionMilestone.ts",
       upstreamTest: "src/tools/addVersionMilestone.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "add_watching",
       toolset: "issue",
       mutationClass: "mutation",
+      origin: "upstream",
       upstreamSource: "src/tools/addWatching.ts",
       upstreamTest: "src/tools/addWatching.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "add_wiki",
       toolset: "wiki",
       mutationClass: "mutation",
+      origin: "upstream",
       upstreamSource: "src/tools/addWiki.ts",
       upstreamTest: "src/tools/addWiki.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "count_issues",
       toolset: "issue",
       mutationClass: "read",
+      origin: "upstream",
       upstreamSource: "src/tools/countIssues.ts",
       upstreamTest: "src/tools/countIssues.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "count_notifications",
       toolset: "notifications",
       mutationClass: "read",
+      origin: "upstream",
       upstreamSource: "src/tools/getNotificationsCount.ts",
       upstreamTest: "src/tools/getNotificationsCount.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "delete_issue",
       toolset: "issue",
       mutationClass: "destructive",
+      origin: "upstream",
       upstreamSource: "src/tools/deleteIssue.ts",
       upstreamTest: "src/tools/deleteIssue.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "delete_project",
       toolset: "project",
       mutationClass: "destructive",
+      origin: "upstream",
       upstreamSource: "src/tools/deleteProject.ts",
       upstreamTest: "src/tools/deleteProject.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "delete_version",
       toolset: "issue",
       mutationClass: "destructive",
+      origin: "upstream",
       upstreamSource: "src/tools/deleteVersion.ts",
       upstreamTest: "src/tools/deleteVersion.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "delete_watching",
       toolset: "issue",
       mutationClass: "destructive",
+      origin: "upstream",
       upstreamSource: "src/tools/deleteWatching.ts",
       upstreamTest: "src/tools/deleteWatching.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "get_categories",
       toolset: "issue",
       mutationClass: "read",
+      origin: "upstream",
       upstreamSource: "src/tools/getCategories.ts",
       upstreamTest: "src/tools/getCategories.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "get_custom_fields",
       toolset: "issue",
       mutationClass: "read",
+      origin: "upstream",
       upstreamSource: "src/tools/getCustomFields.ts",
       upstreamTest: "src/tools/getCustomFields.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "get_document",
       toolset: "document",
       mutationClass: "read",
+      origin: "upstream",
       upstreamSource: "src/tools/getDocument.ts",
       upstreamTest: "src/tools/getDocument.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "get_document_tree",
       toolset: "document",
       mutationClass: "read",
+      origin: "upstream",
       upstreamSource: "src/tools/getDocumentTree.ts",
       upstreamTest: "src/tools/getDocumentTree.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "get_documents",
       toolset: "document",
       mutationClass: "read",
+      origin: "upstream",
       upstreamSource: "src/tools/getDocuments.ts",
       upstreamTest: "src/tools/getDocuments.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "get_git_repositories",
       toolset: "git",
       mutationClass: "read",
+      origin: "upstream",
       upstreamSource: "src/tools/getGitRepositories.ts",
       upstreamTest: "src/tools/getGitRepositories.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "get_git_repository",
       toolset: "git",
       mutationClass: "read",
+      origin: "upstream",
       upstreamSource: "src/tools/getGitRepository.ts",
       upstreamTest: "src/tools/getGitRepository.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "get_issue",
       toolset: "issue",
       mutationClass: "read",
+      origin: "upstream",
       upstreamSource: "src/tools/getIssue.ts",
       upstreamTest: "src/tools/getIssue.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "get_issue_comments",
       toolset: "issue",
       mutationClass: "read",
+      origin: "upstream",
       upstreamSource: "src/tools/getIssueComments.ts",
       upstreamTest: "src/tools/getIssueComments.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "get_issue_types",
       toolset: "issue",
       mutationClass: "read",
+      origin: "upstream",
       upstreamSource: "src/tools/getIssueTypes.ts",
       upstreamTest: "src/tools/getIssueTypes.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "get_issues",
       toolset: "issue",
       mutationClass: "read",
+      origin: "upstream",
       upstreamSource: "src/tools/getIssues.ts",
       upstreamTest: "src/tools/getIssues.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "get_myself",
       toolset: "space",
       mutationClass: "read",
+      origin: "upstream",
       upstreamSource: "src/tools/getMyself.ts",
       upstreamTest: "src/tools/getMyself.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "get_notifications",
       toolset: "notifications",
       mutationClass: "read",
+      origin: "upstream",
       upstreamSource: "src/tools/getNotifications.ts",
       upstreamTest: "src/tools/getNotifications.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "get_priorities",
       toolset: "issue",
       mutationClass: "read",
+      origin: "upstream",
       upstreamSource: "src/tools/getPriorities.ts",
       upstreamTest: "src/tools/getPriorities.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "get_project",
       toolset: "project",
       mutationClass: "read",
+      origin: "upstream",
       upstreamSource: "src/tools/getProject.ts",
       upstreamTest: "src/tools/getProject.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "get_project_list",
       toolset: "project",
       mutationClass: "read",
+      origin: "upstream",
       upstreamSource: "src/tools/getProjectList.ts",
       upstreamTest: "src/tools/getProjectList.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "get_project_users",
       toolset: "project",
       mutationClass: "read",
+      origin: "upstream",
       upstreamSource: "src/tools/getProjectUsers.ts",
       upstreamTest: "src/tools/getProjectUsers.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "get_pull_request",
       toolset: "git",
       mutationClass: "read",
+      origin: "upstream",
       upstreamSource: "src/tools/getPullRequest.ts",
       upstreamTest: "src/tools/getPullRequest.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "get_pull_request_comments",
       toolset: "git",
       mutationClass: "read",
+      origin: "upstream",
       upstreamSource: "src/tools/getPullRequestComments.ts",
       upstreamTest: "src/tools/getPullRequestComments.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "get_pull_requests",
       toolset: "git",
       mutationClass: "read",
+      origin: "upstream",
       upstreamSource: "src/tools/getPullRequests.ts",
       upstreamTest: "src/tools/getPullRequests.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "get_pull_requests_count",
       toolset: "git",
       mutationClass: "read",
+      origin: "upstream",
       upstreamSource: "src/tools/getPullRequestsCount.ts",
       upstreamTest: "src/tools/getPullRequestsCount.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
+    },
+    {
+      operation: "get_rate_limit",
+      toolset: "backlog-api",
+      mutationClass: "read",
+      origin: "backlog-api",
+      upstreamSource: null,
+      upstreamTest: null,
+      targetEntry: "src/core/local-tools.ts",
+      targetTest: "tests/access-policy-and-rate-limit.test.mjs"
     },
     {
       operation: "get_resolutions",
       toolset: "issue",
       mutationClass: "read",
+      origin: "upstream",
       upstreamSource: "src/tools/getResolutions.ts",
       upstreamTest: "src/tools/getResolutions.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "get_space",
       toolset: "space",
       mutationClass: "read",
+      origin: "upstream",
       upstreamSource: "src/tools/getSpace.ts",
       upstreamTest: "src/tools/getSpace.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "get_space_activities",
       toolset: "space",
       mutationClass: "read",
+      origin: "upstream",
       upstreamSource: "src/tools/getSpaceActivities.ts",
       upstreamTest: "src/tools/getSpaceActivities.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "get_user_recent_updates",
       toolset: "space",
       mutationClass: "read",
+      origin: "upstream",
       upstreamSource: "src/tools/getUserRecentUpdates.ts",
       upstreamTest: "src/tools/getUserRecentUpdates.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "get_user_stars_count",
       toolset: "space",
       mutationClass: "read",
+      origin: "upstream",
       upstreamSource: "src/tools/getUserStarsCount.ts",
       upstreamTest: "src/tools/getUserStarsCount.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "get_users",
       toolset: "space",
       mutationClass: "read",
+      origin: "upstream",
       upstreamSource: "src/tools/getUsers.ts",
       upstreamTest: "src/tools/getUsers.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "get_version_milestone_list",
       toolset: "issue",
       mutationClass: "read",
+      origin: "upstream",
       upstreamSource: "src/tools/getVersionMilestoneList.ts",
       upstreamTest: "src/tools/getVersionMilestoneList.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "get_watching_list_count",
       toolset: "issue",
       mutationClass: "read",
+      origin: "upstream",
       upstreamSource: "src/tools/getWatchingListCount.ts",
       upstreamTest: "src/tools/getWatchingListCount.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "get_watching_list_items",
       toolset: "issue",
       mutationClass: "read",
+      origin: "upstream",
       upstreamSource: "src/tools/getWatchingListItems.ts",
       upstreamTest: "src/tools/getWatchingListItems.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "get_wiki",
       toolset: "wiki",
       mutationClass: "read",
+      origin: "upstream",
       upstreamSource: "src/tools/getWiki.ts",
       upstreamTest: "src/tools/getWiki.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "get_wiki_pages",
       toolset: "wiki",
       mutationClass: "read",
+      origin: "upstream",
       upstreamSource: "src/tools/getWikiPages.ts",
       upstreamTest: "src/tools/getWikiPages.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "get_wikis_count",
       toolset: "wiki",
       mutationClass: "read",
+      origin: "upstream",
       upstreamSource: "src/tools/getWikisCount.ts",
       upstreamTest: "src/tools/getWikisCount.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "mark_notification_as_read",
       toolset: "notifications",
       mutationClass: "mutation",
+      origin: "upstream",
       upstreamSource: "src/tools/markNotificationAsRead.ts",
       upstreamTest: "src/tools/markNotificationAsRead.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "mark_watching_as_read",
       toolset: "issue",
       mutationClass: "mutation",
+      origin: "upstream",
       upstreamSource: "src/tools/markWatchingAsRead.ts",
       upstreamTest: "src/tools/markWatchingAsRead.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "reset_unread_notification_count",
       toolset: "notifications",
       mutationClass: "broad-mutation",
+      origin: "upstream",
       upstreamSource: "src/tools/resetUnreadNotificationCount.ts",
       upstreamTest: "src/tools/resetUnreadNotificationCount.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "update_issue",
       toolset: "issue",
       mutationClass: "mutation",
+      origin: "upstream",
       upstreamSource: "src/tools/updateIssue.ts",
       upstreamTest: "src/tools/updateIssue.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "update_project",
       toolset: "project",
       mutationClass: "mutation",
+      origin: "upstream",
       upstreamSource: "src/tools/updateProject.ts",
       upstreamTest: "src/tools/updateProject.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "update_pull_request",
       toolset: "git",
       mutationClass: "mutation",
+      origin: "upstream",
       upstreamSource: "src/tools/updatePullRequest.ts",
       upstreamTest: "src/tools/updatePullRequest.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "update_pull_request_comment",
       toolset: "git",
       mutationClass: "mutation",
+      origin: "upstream",
       upstreamSource: "src/tools/updatePullRequestComment.ts",
       upstreamTest: "src/tools/updatePullRequestComment.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "update_version_milestone",
       toolset: "issue",
       mutationClass: "mutation",
+      origin: "upstream",
       upstreamSource: "src/tools/updateVersionMilestone.ts",
       upstreamTest: "src/tools/updateVersionMilestone.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "update_watching",
       toolset: "issue",
       mutationClass: "mutation",
+      origin: "upstream",
       upstreamSource: "src/tools/updateWatching.ts",
       upstreamTest: "src/tools/updateWatching.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     },
     {
       operation: "update_wiki",
       toolset: "wiki",
       mutationClass: "mutation",
+      origin: "upstream",
       upstreamSource: "src/tools/updateWiki.ts",
       upstreamTest: "src/tools/updateWiki.test.ts",
-      targetEntry: "src/core/run-operation.ts"
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
     }
   ]
 };
 
 // src/core/traceability.ts
 var byOperation = new Map(
-  upstream_tool_mapping_default.operations.map((entry) => [entry.operation, entry])
+  upstream_tool_mapping_default.operations.map((entry) => [
+    entry.operation,
+    entry
+  ])
 );
 function getUpstreamTrace(operation) {
   const entry = byOperation.get(operation);
+  if (entry?.origin === "backlog-api") {
+    return {
+      origin: "backlog-api",
+      repository: upstream_tool_mapping_default.target.repository,
+      version: upstream_tool_mapping_default.target.version,
+      operation,
+      source: entry.targetEntry,
+      test: entry.targetTest
+    };
+  }
   return {
+    origin: "upstream",
     repository: upstream_tool_mapping_default.upstream.repository,
     version: upstream_tool_mapping_default.upstream.version,
     commit: upstream_tool_mapping_default.upstream.commit,
     operation,
-    source: entry?.upstreamSource,
+    source: entry?.upstreamSource ?? void 0,
     test: entry?.upstreamTest
   };
 }
@@ -30762,137 +32629,122 @@ var Issue;
   })({});
 })(Issue || (Issue = {}));
 
-// node_modules/backlog-mcp-server/build/auth/backlogAuthContext.js
-import { AsyncLocalStorage } from "node:async_hooks";
-var accessTokenStorage = new AsyncLocalStorage();
+// src/product.ts
+var product = Object.freeze({
+  name: "backlog-api",
+  version: "0.5.0",
+  upstream: "backlog-mcp-server@0.13.2"
+});
 
-// node_modules/backlog-mcp-server/build/utils/backlogOrganizationContext.js
-import { AsyncLocalStorage as AsyncLocalStorage2 } from "node:async_hooks";
-var organizationStorage = new AsyncLocalStorage2();
-function getCurrentOrganization() {
-  return organizationStorage.getStore();
+// src/core/backlog-access-context.ts
+import { AsyncLocalStorage } from "node:async_hooks";
+var accessContext = new AsyncLocalStorage();
+function createBacklogAccessContext() {
+  return {};
+}
+function runWithBacklogAccessContext(context, callback) {
+  return accessContext.run(context, callback);
+}
+function capturedBacklogResponse(context) {
+  return context.response;
+}
+function createBacklogCapturingFetch(baseFetch = globalThis.fetch) {
+  return async (input, init) => {
+    const response = await baseFetch(input, init);
+    const context = accessContext.getStore();
+    if (context !== void 0) {
+      context.response = extractBacklogResponseMetadata(response);
+    }
+    return response;
+  };
+}
+function extractBacklogResponseMetadata(response) {
+  const limit = nonNegativeInteger(response.headers.get("X-RateLimit-Limit"));
+  const remaining = nonNegativeInteger(response.headers.get("X-RateLimit-Remaining"));
+  const resetAt = resetDate(response.headers.get("X-RateLimit-Reset"));
+  const rateLimit = compactRateLimit({
+    ...limit === void 0 ? {} : { limit },
+    ...remaining === void 0 ? {} : { remaining },
+    ...resetAt === void 0 ? {} : { resetAt }
+  });
+  return {
+    ...httpStatus(response.status) === void 0 ? {} : { httpStatus: response.status },
+    ...rateLimit === void 0 ? {} : { rateLimit }
+  };
+}
+function compactRateLimit(metadata) {
+  return Object.values(metadata).some((value) => value !== void 0) ? metadata : void 0;
+}
+function nonNegativeInteger(value) {
+  if (value === null || !/^\d+$/.test(value)) {
+    return void 0;
+  }
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) ? parsed : void 0;
+}
+function resetDate(value) {
+  const seconds = nonNegativeInteger(value);
+  if (seconds === void 0) {
+    return void 0;
+  }
+  const milliseconds = seconds * 1e3;
+  if (!Number.isFinite(milliseconds)) {
+    return void 0;
+  }
+  try {
+    return new Date(milliseconds).toISOString();
+  } catch {
+    return void 0;
+  }
+}
+function httpStatus(value) {
+  return Number.isInteger(value) && value >= 100 && value <= 599 ? value : void 0;
 }
 
-// node_modules/backlog-mcp-server/package.json
-var package_default = {
-  name: "backlog-mcp-server",
-  version: "0.13.2",
-  type: "module",
-  bin: {
-    "backlog-mcp-server": "./build/index.js"
-  },
-  engines: {
-    node: ">=22"
-  },
-  devEngines: {
-    runtime: {
-      name: "node",
-      version: ">=22",
-      onFail: "warn"
-    }
-  },
-  license: "MIT",
-  repository: {
-    type: "git",
-    url: "git+https://github.com/nulab/backlog-mcp-server.git"
-  },
-  files: [
-    "build"
-  ],
-  dependencies: {
-    "@hono/node-server": "^2.0.4",
-    "@modelcontextprotocol/sdk": "^1.29.0",
-    "backlog-js": "^0.18.1",
-    cosmiconfig: "^9.0.1",
-    "env-var": "^7.5.0",
-    graphql: "^16.14.1",
-    hono: "^4.12.25",
-    pino: "^10.3.1",
-    "pino-pretty": "^13.1.3",
-    yargs: "^18.0.0",
-    zod: "^3.24.3"
-  },
-  devDependencies: {
-    "@eslint/js": "^10.0.1",
-    "@types/node": "^25.9.2",
-    "@types/yargs": "^17.0.35",
-    "@typescript-eslint/eslint-plugin": "^8.60.1",
-    "@typescript-eslint/parser": "^8.60.1",
-    "@typescript-eslint/utils": "^8.60.1",
-    "@vitest/coverage-v8": "^4.1.8",
-    eslint: "^10.4.1",
-    "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-prettier": "^5.5.6",
-    prettier: "^3.8.3",
-    tsx: "^4.22.4",
-    typescript: "^6.0.3",
-    vitest: "^4.1.8"
-  },
-  scripts: {
-    preinstall: "npx only-allow pnpm",
-    dev: "tsx src/index.ts",
-    build: "tsc && chmod 755 build/index.js",
-    test: "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
-    lint: "eslint . --ext .ts",
-    "lint:fix": "eslint . --ext .ts --fix",
-    format: 'prettier --check "**/*.{ts,tsx}"',
-    "format:fix": 'prettier --write "**/*.{ts,tsx}"',
-    typecheck: "tsc --noEmit",
-    "typecheck:all": "tsc --noEmit --project tsconfig.test.json"
-  }
-};
-
-// node_modules/backlog-mcp-server/build/utils/backlogClientRegistry.js
-var USER_AGENT = `backlog-mcp-server/${package_default.version}`;
-function createBacklogClientRegistry(input = {}) {
-  const env = input.env ?? process.env;
-  const multiOrgRegistry = createMultiOrganizationRegistryFromEnv(env);
-  if (multiOrgRegistry) {
-    return multiOrgRegistry;
+// src/core/backlog-client-registry.ts
+var USER_AGENT = `${product.name}/${product.version}`;
+function createBacklogClientRegistry(options = {}) {
+  const env = options.env ?? process.env;
+  const fetch = createBacklogCapturingFetch(options.fetch);
+  const multiOrganization = createMultiOrganizationRegistry(env, fetch);
+  if (multiOrganization !== void 0) {
+    return multiOrganization;
   }
   const domain = env.BACKLOG_DOMAIN;
   const apiKey = env.BACKLOG_API_KEY;
   if (!domain || !apiKey) {
-    throw new Error("Configure either BACKLOG_ORG_<NAME>_DOMAIN and BACKLOG_ORG_<NAME>_API_KEY with BACKLOG_DEFAULT_ORG, or both BACKLOG_DOMAIN and BACKLOG_API_KEY.");
+    throw new Error(
+      "Configure either BACKLOG_ORG_<NAME>_DOMAIN and BACKLOG_ORG_<NAME>_API_KEY with BACKLOG_DEFAULT_ORG, or both BACKLOG_DOMAIN and BACKLOG_API_KEY."
+    );
   }
-  const defaultName = "default";
-  const client = new Backlog({ host: domain, apiKey, userAgent: USER_AGENT });
-  const info = {
-    name: defaultName,
-    domain,
-    isDefault: true
-  };
+  const client = createClient(domain, apiKey, fetch);
   return {
-    resolveClient: (organization) => {
-      if (organization && organization !== defaultName) {
-        throw new Error(`Unknown organization '${organization}'. Use list_organizations to inspect available organizations.`);
+    resolveClient(organization) {
+      if (organization !== void 0 && organization !== "default") {
+        throw new Error(`Unknown organization '${organization}'.`);
       }
       return client;
-    },
-    createScopedClient: () => createBacklogClientProxy(() => {
-      const organization = getCurrentOrganization();
-      if (organization && organization !== defaultName) {
-        throw new Error(`Unknown organization '${organization}'. Use list_organizations to inspect available organizations.`);
-      }
-      return client;
-    }),
-    listOrganizations: () => [info],
-    getDefaultOrganization: () => defaultName
+    }
   };
 }
-function createMultiOrganizationRegistryFromEnv(env) {
+function createMultiOrganizationRegistry(env, fetch) {
   const organizations = /* @__PURE__ */ new Map();
-  let hasMultiOrgKeys = false;
+  let hasMultiOrganizationKeys = false;
   for (const [key, value] of Object.entries(env)) {
     const match = /^BACKLOG_ORG_(.+)_(DOMAIN|API_KEY)$/.exec(key);
-    if (!match) {
+    if (match === null) {
       continue;
     }
-    hasMultiOrgKeys = true;
-    const [, organization, field] = match;
-    const config = organizations.get(organization) ?? {};
+    hasMultiOrganizationKeys = true;
+    const organization = match[1];
+    const field = match[2];
+    if (organization === void 0 || field === void 0) {
+      continue;
+    }
+    const config = organizations.get(organization) ?? {
+      domain: void 0,
+      apiKey: void 0
+    };
     if (field === "DOMAIN") {
       config.domain = value;
     } else {
@@ -30900,75 +32752,43 @@ function createMultiOrganizationRegistryFromEnv(env) {
     }
     organizations.set(organization, config);
   }
-  if (!hasMultiOrgKeys) {
+  if (!hasMultiOrganizationKeys) {
     return void 0;
   }
-  const invalidOrganizations = Array.from(organizations.entries()).filter(([, config]) => !config.domain || !config.apiKey).map(([organization, config]) => {
-    const missing = [];
-    if (!config.domain)
-      missing.push(`BACKLOG_ORG_${organization}_DOMAIN`);
-    if (!config.apiKey)
-      missing.push(`BACKLOG_ORG_${organization}_API_KEY`);
-    return `${organization} (missing: ${missing.join(", ")})`;
-  }).sort();
-  if (invalidOrganizations.length > 0) {
-    throw new Error(`Incomplete multi-organization configuration. ${invalidOrganizations.join("; ")}`);
-  }
-  if (organizations.size === 0) {
-    throw new Error("No valid multi-organization configuration was found. Define BACKLOG_ORG_<NAME>_DOMAIN and BACKLOG_ORG_<NAME>_API_KEY pairs.");
+  const invalid = [...organizations.entries()].filter(([, config]) => !config.domain || !config.apiKey).map(([organization]) => organization).sort();
+  if (invalid.length > 0) {
+    throw new Error(
+      `Incomplete multi-organization configuration: ${invalid.join(", ")}.`
+    );
   }
   const defaultOrganization = env.BACKLOG_DEFAULT_ORG;
   if (!defaultOrganization) {
-    throw new Error("BACKLOG_DEFAULT_ORG is required when using BACKLOG_ORG_<NAME>_DOMAIN and BACKLOG_ORG_<NAME>_API_KEY.");
+    throw new Error(
+      "BACKLOG_DEFAULT_ORG is required when using BACKLOG_ORG_<NAME> configuration."
+    );
   }
   const clients = /* @__PURE__ */ new Map();
-  const validatedOrganizations = organizations;
-  const organizationInfo = Array.from(validatedOrganizations.entries()).map(([name, config]) => {
-    clients.set(name, new Backlog({
-      host: config.domain,
-      apiKey: config.apiKey,
-      userAgent: USER_AGENT
-    }));
-    return {
-      name,
-      domain: config.domain,
-      isDefault: name === defaultOrganization
-    };
-  });
+  for (const [organization, config] of organizations) {
+    clients.set(organization, createClient(config.domain, config.apiKey, fetch));
+  }
   if (!clients.has(defaultOrganization)) {
-    throw new Error(`BACKLOG_DEFAULT_ORG '${defaultOrganization}' does not match any configured organization. Use list_organizations to inspect available organizations.`);
+    throw new Error(
+      `BACKLOG_DEFAULT_ORG '${defaultOrganization}' does not match a configured organization.`
+    );
   }
   return {
-    resolveClient: (organization) => {
-      const orgName = organization ?? defaultOrganization;
-      return resolveKnownClient(clients, orgName);
-    },
-    createScopedClient: () => createBacklogClientProxy(() => {
-      const organization = getCurrentOrganization();
-      return organization === void 0 ? resolveKnownClient(clients, defaultOrganization) : resolveKnownClient(clients, organization);
-    }),
-    listOrganizations: () => organizationInfo,
-    getDefaultOrganization: () => defaultOrganization
+    resolveClient(organization) {
+      const selected = organization ?? defaultOrganization;
+      const client = clients.get(selected);
+      if (client === void 0) {
+        throw new Error(`Unknown organization '${selected}'.`);
+      }
+      return client;
+    }
   };
 }
-function resolveKnownClient(clients, organization) {
-  const client = clients.get(organization);
-  if (!client) {
-    throw new Error(`Unknown organization '${organization}'. Use list_organizations to inspect available organizations.`);
-  }
-  return client;
-}
-function createBacklogClientProxy(resolveClient) {
-  return new Proxy({}, {
-    get(_target, prop) {
-      const client = resolveClient();
-      const value = Reflect.get(client, prop);
-      if (typeof value === "function") {
-        return value.bind(client);
-      }
-      return value;
-    }
-  });
+function createClient(host, apiKey, fetch) {
+  return new Backlog({ host, apiKey, fetch, userAgent: USER_AGENT });
 }
 
 // node_modules/backlog-mcp-server/build/handlers/transformers/wrapWithFieldPicking.js
@@ -31153,9 +32973,9 @@ function extractHttpStatus(error) {
   }
   const direct = numberValue(error.status) ?? numberValue(error.statusCode);
   if (direct !== void 0) {
-    return httpStatus(direct);
+    return httpStatus2(direct);
   }
-  return isRecord(error.response) ? httpStatus(numberValue(error.response.status)) : void 0;
+  return isRecord(error.response) ? httpStatus2(numberValue(error.response.status)) : void 0;
 }
 function idOrKey(id, key, combined, resource) {
   const numericId = numberOrNumberArray(id) ?? numberOrNumberArray(combined);
@@ -31187,7 +33007,7 @@ function numberOrNumberArray(value) {
   const numbers = value.filter((entry) => numberValue(entry) !== void 0);
   return numbers.length > 0 ? numbers.slice(0, 20) : void 0;
 }
-function httpStatus(value) {
+function httpStatus2(value) {
   return value !== void 0 && Number.isInteger(value) && value >= 100 && value <= 599 ? value : void 0;
 }
 function isRecord(value) {
@@ -31223,23 +33043,32 @@ function observeBacklogClient(client, context) {
           ...inputMetadata
         };
         context.onAccess?.({ phase: "start", ...event });
+        const accessContext2 = createBacklogAccessContext();
         try {
-          const result = await Reflect.apply(value, target, args);
+          const result = await runWithBacklogAccessContext(
+            accessContext2,
+            async () => Reflect.apply(value, target, args)
+          );
+          const response = capturedBacklogResponse(accessContext2);
           const resultIdentifiers = extractResultIdentifiers(context.operation, result);
           context.onAccess?.({
             phase: "success",
             ...event,
             ...resultIdentifiers === void 0 ? {} : { result: resultIdentifiers },
+            ...response?.httpStatus === void 0 ? {} : { httpStatus: response.httpStatus },
+            ...response?.rateLimit === void 0 ? {} : { rateLimit: response.rateLimit },
             durationMs: elapsedMilliseconds(startedAt)
           });
           return result;
         } catch (error) {
-          const status = extractHttpStatus(error);
+          const response = capturedBacklogResponse(accessContext2);
+          const status = response?.httpStatus ?? extractHttpStatus(error);
           context.onAccess?.({
             phase: "failure",
             ...event,
             durationMs: elapsedMilliseconds(startedAt),
-            ...status === void 0 ? {} : { httpStatus: status }
+            ...status === void 0 ? {} : { httpStatus: status },
+            ...response?.rateLimit === void 0 ? {} : { rateLimit: response.rateLimit }
           });
           throw error;
         }
@@ -31254,9 +33083,34 @@ function elapsedMilliseconds(startedAt) {
 // src/core/run-operation.ts
 async function runOperation(operation, input, options = {}) {
   const trace = getUpstreamTrace(operation);
-  const mutationClass = classifyMutation(operation);
-  const permission = requiredPermission(operation);
-  if (options.allowedPermissions !== void 0 && !options.allowedPermissions.includes(permission)) {
+  if (!hasOperation(operation)) {
+    return failure(operation, "UNKNOWN_OPERATION", `Unknown operation: ${operation}`, trace);
+  }
+  let mutationClass;
+  let permission;
+  try {
+    mutationClass = classifyMutation(operation);
+    permission = requiredPermission(operation);
+  } catch (error) {
+    return failure(operation, "CONFIGURATION_ERROR", errorMessage(error), trace);
+  }
+  const env = options.env ?? process.env;
+  let environmentPermissions;
+  try {
+    environmentPermissions = environmentAllowedPermissions(env);
+  } catch (error) {
+    return failure(operation, "CONFIGURATION_ERROR", errorMessage(error), trace);
+  }
+  if (!environmentPermissions.includes(permission)) {
+    return failure(
+      operation,
+      "ACCESS_PERMISSION_REQUIRED",
+      `Operation ${operation} requires ${permission}, but ${permission} is not enabled by ${BACKLOG_API_ALLOWED_PERMISSIONS}.`,
+      trace
+    );
+  }
+  const callPermissions = options.allowedPermissions ?? DEFAULT_CRUD_PERMISSIONS;
+  if (!callPermissions.includes(permission)) {
     return failure(
       operation,
       "PERMISSION_REQUIRED",
@@ -31282,14 +33136,6 @@ async function runOperation(operation, input, options = {}) {
       trace
     );
   }
-  let registry;
-  try {
-    registry = options.registry ?? createBacklogClientRegistry(
-      options.env === void 0 ? {} : { env: options.env }
-    );
-  } catch (error) {
-    return failure(operation, "CONFIGURATION_ERROR", errorMessage(error), trace);
-  }
   const { organization, fields: _fields, ...toolInput } = request;
   if (organization !== void 0 && typeof organization !== "string") {
     return failure(
@@ -31298,6 +33144,38 @@ async function runOperation(operation, input, options = {}) {
       "organization must be a string when provided.",
       trace
     );
+  }
+  const metadataResolved = resolveTool({}, operation);
+  if (!metadataResolved) {
+    return failure(operation, "UNKNOWN_OPERATION", `Unknown operation: ${operation}`, trace);
+  }
+  if (options.dryRun === true) {
+    const validation2 = validateToolInput(
+      operation,
+      metadataResolved.toolset,
+      metadataResolved.tool.schema,
+      toolInput,
+      trace
+    );
+    if (!validation2.ok) {
+      return validation2.failure;
+    }
+    return {
+      schemaVersion: 1,
+      operation,
+      toolset: metadataResolved.toolset,
+      success: true,
+      dryRun: true,
+      input: validation2.data,
+      diagnostics: [],
+      trace
+    };
+  }
+  let registry;
+  try {
+    registry = options.registry ?? createBacklogClientRegistry({ env });
+  } catch (error) {
+    return failure(operation, "CONFIGURATION_ERROR", errorMessage(error), trace);
   }
   let backlog;
   try {
@@ -31318,39 +33196,19 @@ async function runOperation(operation, input, options = {}) {
   if (!resolved) {
     return failure(operation, "UNKNOWN_OPERATION", `Unknown operation: ${operation}`, trace);
   }
-  const parsed = resolved.tool.schema.safeParse(toolInput);
-  if (!parsed.success) {
-    return {
-      schemaVersion: 1,
-      operation,
-      toolset: resolved.toolset,
-      success: false,
-      diagnostics: parsed.error.issues.map((issue) => ({
-        code: "INVALID_ARGUMENT",
-        severity: "error",
-        path: issue.path.map(String).join("."),
-        message: issue.message
-      })),
-      trace
-    };
+  const validation = validateToolInput(
+    operation,
+    resolved.toolset,
+    resolved.tool.schema,
+    toolInput,
+    trace
+  );
+  if (!validation.ok) {
+    return validation.failure;
   }
-  if (isRecord2(parsed.data)) {
-    verboseContext.input = parsed.data;
-  }
-  if (options.dryRun === true) {
-    return {
-      schemaVersion: 1,
-      operation,
-      toolset: resolved.toolset,
-      success: true,
-      dryRun: true,
-      input: parsed.data,
-      diagnostics: [],
-      trace
-    };
-  }
+  verboseContext.input = validation.record;
   try {
-    const result = await resolved.tool.handler(parsed.data);
+    const result = await resolved.tool.handler(validation.data);
     const selectedResult = await selectResultFields(result, fields);
     return {
       schemaVersion: 1,
@@ -31371,6 +33229,47 @@ async function runOperation(operation, input, options = {}) {
       resolved.toolset
     );
   }
+}
+function validateToolInput(operation, toolset, schema, input, trace) {
+  const parsed = schema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      failure: {
+        schemaVersion: 1,
+        operation,
+        toolset,
+        success: false,
+        diagnostics: parsed.error.issues.map((issue) => ({
+          code: "INVALID_ARGUMENT",
+          severity: "error",
+          path: issue.path.map(String).join("."),
+          message: issue.message
+        })),
+        trace
+      }
+    };
+  }
+  const record = isRecord2(parsed.data) ? parsed.data : {};
+  const constraintIssues = validateOperationInputConstraints(operation, record);
+  if (constraintIssues.length > 0) {
+    return {
+      ok: false,
+      failure: {
+        schemaVersion: 1,
+        operation,
+        toolset,
+        success: false,
+        diagnostics: constraintIssues.map((issue) => ({
+          code: "INVALID_ARGUMENT",
+          severity: "error",
+          ...issue
+        })),
+        trace
+      }
+    };
+  }
+  return { ok: true, data: parsed.data, record };
 }
 function failure(operation, code, message, trace, toolset) {
   return {
@@ -31394,13 +33293,6 @@ function formatBacklogAccessEvent(event) {
   return `verbose: ${JSON.stringify({ type: "backlog-api-access", ...event })}`;
 }
 
-// src/runtime.ts
-var product = Object.freeze({
-  name: "backlog-api",
-  version: "0.3.4",
-  upstream: "backlog-mcp-server@0.13.2"
-});
-
 // src/cli.ts
 var HELP = `backlog-api ${product.version} \u2014 JSON CLI for Backlog API operations
 
@@ -31408,6 +33300,7 @@ Usage:
   backlog-api --version
   backlog-api --help
   backlog-api tools list
+  backlog-api tools describe <operation>
   backlog-api trace [operation]
   backlog-api call <operation> [--input <file|->] [--allow <permissions>]
       [--dry-run] [--confirm-destructive] [--verbose]
@@ -31421,7 +33314,13 @@ Commands:
 
   tools list
       Print a JSON catalog of available operations. Each entry includes the
-      operation name, description, toolset, and mutation classification.
+      operation name, description, toolset, mutation classification, and
+      required permission.
+
+  tools describe <operation>
+      Print the machine-readable contract for one operation: input JSON Schema,
+      result fields available to "fields", safety requirements, and examples.
+      No Backlog credentials are required.
 
   trace [operation]
       Print JSON traceability metadata for all operations or one operation.
@@ -31429,14 +33328,19 @@ Commands:
 
   call <operation>
       Read one JSON object, invoke the named operation, and print one JSON
-      result envelope. Use "tools list" to discover operation names.
+      result envelope. Use "tools list" to discover operation names and
+      "tools describe <operation>" to discover its input contract.
+      "call <operation> --help" is an alias for "tools describe <operation>".
 
 Call options:
   --input <file>          Read the request object from a UTF-8 JSON file.
   --input -               Read the request object from stdin (default).
   --allow <permissions>   Allow comma-separated CRUD permissions. Defaults to
-                          READ. Values: READ, CREATE, UPDATE, DELETE.
-  --dry-run               Validate and normalize input without invoking Backlog.
+                          READ. Values: READ, CREATE, UPDATE, DELETE. This
+                          cannot exceed BACKLOG_API_ALLOWED_PERMISSIONS.
+  --dry-run               Validate and normalize input without resolving a
+                          Backlog connection or requiring credentials. Write
+                          permissions and destructive confirmation still apply.
   --confirm-destructive   Explicitly authorize delete_* or broad reset calls.
   --verbose               Write a safe summary of each Backlog API access to
                           stderr as a "verbose: " prefixed JSON object. A
@@ -31444,6 +33348,8 @@ Call options:
                           changed field names, pagination, and an exposed HTTP
                           failure status. Content values, credentials, personal
                           data, full arguments/results, and error text are omitted.
+  Each option may be specified once. Unknown options, duplicate options, and
+  extra positional arguments are usage errors.
 
 Input JSON:
   The input must be exactly one JSON object. Operation arguments are top-level
@@ -31453,7 +33359,7 @@ Input JSON:
   only selected result fields.
 
 Output:
-  "tools list", "trace", and "call" write machine-readable JSON to stdout.
+  All commands except --help and --version write machine-readable JSON to stdout.
   A call result contains schemaVersion, operation, success, diagnostics,
   trace, and either result or dryRun/input data. --help and --version are the
   only plain-text stdout commands. Unexpected CLI errors are written to stderr.
@@ -31463,8 +33369,8 @@ Output:
 
 Safety:
   Calls allow READ operations only by default. CREATE, UPDATE, and DELETE must
-  be explicitly enabled with --allow. This is a client-side execution policy,
-  not a Backlog account permission.
+  be enabled both by BACKLOG_API_ALLOWED_PERMISSIONS and --allow. This is a
+  client-side execution policy, not a Backlog account permission.
 
   delete_* and reset_unread_notification_count require
   --confirm-destructive when applicable, independently of --allow. DELETE
@@ -31472,23 +33378,55 @@ Safety:
 
 Environment:
   BACKLOG_DOMAIN and BACKLOG_API_KEY configure one connection. The upstream
-  BACKLOG_DEFAULT_ORG and BACKLOG_ORG_<NAME>_* variables configure multiple
-  organizations. Metadata commands do not require credentials.
+  BACKLOG_DEFAULT_ORG, BACKLOG_ORG_<NAME>_DOMAIN, and
+  BACKLOG_ORG_<NAME>_API_KEY variables configure multiple organizations.
+  Metadata commands do not require credentials.
+
+  BACKLOG_API_ALLOWED_PERMISSIONS is a comma-separated environment-level
+  maximum using READ, CREATE, UPDATE, and DELETE. It defaults to READ when
+  unset. Whitespace around commas and values is ignored. --allow cannot enable
+  a permission omitted here. When the variable is set, READ is not added
+  implicitly. Values are case-insensitive and duplicates are normalized.
+  Empty elements and unknown values are configuration errors detected before
+  Backlog credentials or clients are resolved.
+
+  A write requires its permission in both BACKLOG_API_ALLOWED_PERMISSIONS and
+  --allow. DELETE additionally requires --confirm-destructive.
+
+  Examples:
+    BACKLOG_API_ALLOWED_PERMISSIONS=READ
+    BACKLOG_API_ALLOWED_PERMISSIONS=READ,CREATE,UPDATE
+    BACKLOG_API_ALLOWED_PERMISSIONS=READ,CREATE,UPDATE,DELETE
+
+Rate limits:
+  get_rate_limit is a backlog-api-specific READ operation returning the read,
+  update, search, and icon limits. Calling it consumes one API request.
+  --verbose outcome events include validated X-RateLimit values and an actual
+  HTTP status when the Backlog response exposes them.
 
 Exit codes:
   0  Successful metadata command or operation.
   1  Configuration, confirmation, organization, or Backlog API failure.
   2  CLI usage, fields-selection, or operation input-schema failure.
 
+Agent discovery:
+  1. Run "tools list" to choose an operation and inspect its safety class.
+  2. Run "tools describe <operation>" to obtain its complete input contract.
+  3. Run "call <operation> --dry-run" with the intended JSON.
+  4. Only after successful validation, run the call without --dry-run.
+
 Examples:
   backlog-api tools list
+  backlog-api tools describe get_issue
+  backlog-api call get_issue --help
   backlog-api trace get_issue
   printf '{"issueKey":"PROJ-1"}\\n' | backlog-api call get_issue
   printf '{"issueKey":"PROJ-1","fields":"{ id summary }"}\\n' | backlog-api call get_issue
   backlog-api call get_issue --input request.json --dry-run
   backlog-api call get_issue --input request.json --verbose
-  backlog-api call add_issue --input request.json --allow CREATE
-  backlog-api call delete_issue --input request.json --allow DELETE --confirm-destructive
+  BACKLOG_API_ALLOWED_PERMISSIONS=READ,CREATE backlog-api call add_issue --input request.json --allow CREATE
+  BACKLOG_API_ALLOWED_PERMISSIONS=READ,CREATE,UPDATE,DELETE backlog-api call delete_issue --input request.json --allow DELETE --confirm-destructive
+  printf '{}\\n' | BACKLOG_API_ALLOWED_PERMISSIONS=READ backlog-api call get_rate_limit
 `;
 main().catch((error) => {
   process.stderr.write(`${error instanceof Error ? error.message : String(error)}
@@ -31497,51 +33435,67 @@ main().catch((error) => {
 });
 async function main() {
   const args = process.argv.slice(2);
-  if (args.length === 0 || args.includes("--help") || args[0] === "help") {
+  let command;
+  try {
+    command = parseCliArguments(args);
+  } catch (error) {
+    if (!(error instanceof CliUsageError)) {
+      throw error;
+    }
+    process.stderr.write(`${error.message}
+`);
+    process.exitCode = 2;
+    return;
+  }
+  if (command.kind === "help") {
     process.stdout.write(HELP);
     return;
   }
-  if (args.includes("--version")) {
+  if (command.kind === "version") {
     process.stdout.write(`${product.version}
 `);
     return;
   }
-  if (args[0] === "tools" && args[1] === "list") {
+  if (command.kind === "tools-list") {
     writeJson({ schemaVersion: 1, product, operations: listOperations() });
     return;
   }
-  if (args[0] === "trace") {
+  if (command.kind === "tools-describe") {
+    const operation = describeOperation(command.operation);
+    if (operation === void 0) {
+      process.stderr.write(
+        `Unknown operation: ${command.operation}. Use "tools list" to discover operation names.
+`
+      );
+      process.exitCode = 2;
+      return;
+    }
+    writeJson({ schemaVersion: 1, product, operation });
+    return;
+  }
+  if (command.kind === "trace") {
     const mapping = getMapping();
-    const operation = args[1];
     writeJson(
-      operation ? {
+      command.operation ? {
         ...mapping.upstream,
-        operation: mapping.operations.find((entry) => entry.operation === operation)
+        operation: mapping.operations.find(
+          (entry) => entry.operation === command.operation
+        )
       } : mapping
     );
     return;
   }
-  if (args[0] === "call" && args[1]) {
-    const inputPath = optionValue(args, "--input") ?? "-";
-    let allowedPermissions;
-    try {
-      allowedPermissions = parseAllowedPermissions(optionValue(args, "--allow"));
-    } catch (error) {
-      process.stderr.write(`${error instanceof Error ? error.message : String(error)}
-`);
-      process.exitCode = 2;
-      return;
-    }
-    const input = JSON.parse(await readInput(inputPath));
+  if (command.kind === "call") {
+    const input = JSON.parse(await readInput(command.inputPath));
     const options = {
-      dryRun: args.includes("--dry-run"),
-      confirmDestructive: args.includes("--confirm-destructive"),
-      allowedPermissions
+      dryRun: command.dryRun,
+      confirmDestructive: command.confirmDestructive,
+      allowedPermissions: command.allowedPermissions
     };
-    if (args.includes("--verbose")) {
+    if (command.verbose) {
       options.onAccess = writeVerboseEvent;
     }
-    const result = await runOperation(args[1], input, options);
+    const result = await runOperation(command.operation, input, options);
     writeJson(result);
     if (!result.success) {
       process.exitCode = result.diagnostics.some(
@@ -31550,35 +33504,6 @@ async function main() {
     }
     return;
   }
-  process.stderr.write("Unknown command. Use --help for usage.\n");
-  process.exitCode = 2;
-}
-function optionValue(args, name) {
-  const index = args.indexOf(name);
-  if (index < 0) {
-    return void 0;
-  }
-  const value = args[index + 1];
-  if (!value || value.startsWith("--")) {
-    throw new Error(`${name} requires a value.`);
-  }
-  return value;
-}
-function parseAllowedPermissions(value) {
-  if (value === void 0) {
-    return ["READ"];
-  }
-  const supported = /* @__PURE__ */ new Set(["READ", "CREATE", "UPDATE", "DELETE"]);
-  const permissions = [...new Set(value.split(",").map((entry) => entry.trim().toUpperCase()))];
-  const invalid = permissions.filter(
-    (permission) => !supported.has(permission)
-  );
-  if (invalid.length > 0) {
-    throw new Error(
-      `--allow contains unsupported permission(s): ${invalid.join(", ")}. Use READ, CREATE, UPDATE, or DELETE.`
-    );
-  }
-  return permissions;
 }
 async function readInput(inputPath) {
   if (inputPath !== "-") {

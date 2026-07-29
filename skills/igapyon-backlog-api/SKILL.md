@@ -37,7 +37,8 @@ notifications, task lists, or backlog grooming.
 3. Open only the references needed for the current request.
 4. Locate the newest `runtime/backlog-api-*.mjs` before searching elsewhere.
 5. Run `node <runtime> tools list` when current operation discovery is needed.
-6. Resolve the target Backlog organization and resource before mutation.
+6. Run `node <runtime> tools describe <operation>` before constructing input.
+7. Resolve the target Backlog organization and resource before mutation.
 
 If the runtime is unavailable, stop with a hard error. Do not silently switch
 to MCP, direct HTTP calls, browser automation, `npx`, Docker, or the disposable
@@ -55,7 +56,9 @@ This skill is `cli-only`.
 
 The CLI inherits authentication configuration from its process environment.
 The checked runtime preserves the upstream single- and multi-organization
-environment contracts.
+environment contracts. Write operations also require their permission in the
+environment-level `BACKLOG_API_ALLOWED_PERMISSIONS` maximum. `--allow` cannot
+exceed that maximum. When the variable is unset, only `READ` is enabled.
 
 When the user explicitly requests local credential storage, follow
 [references/runtime/setup.md](references/runtime/setup.md) and use the ignored
@@ -68,33 +71,42 @@ load it.
 
 1. Classify the request as read, create, update, comment, notification-state
    change, or delete.
-2. Select the exact upstream-compatible operation name from `tools list` or the
-   operations map.
-3. Resolve names to stable project keys, issue keys, repository names, or IDs
+2. Select the exact upstream-compatible operation name from `tools list`.
+3. Read its machine-readable input and safety contract with
+   `tools describe <operation>` or `call <operation> --help`.
+4. Resolve names to stable project keys, issue keys, repository names, or IDs
    with read operations when needed.
-4. Prepare one JSON input object in a temporary or user-approved file.
-5. For every mutation, restate the operation class, organization, exact target,
+5. Prepare one JSON input object in a temporary or user-approved file.
+6. For every mutation, confirm that the corresponding permission is available
+   in `BACKLOG_API_ALLOWED_PERMISSIONS`. Do not modify that environment setting
+   implicitly.
+7. Restate the operation class, organization, exact target,
    and material fields, then obtain just-in-time user approval.
-6. If the operation is destructive or broad, obtain a second, separate
+8. If the operation is destructive or broad, obtain a second, separate
    confirmation that names its impact. Do not combine the two approvals.
-7. Apply the safety rules below.
-8. Run `node <runtime> call <operation> --input <json-file> --verbose` for an
+9. Apply the safety rules below.
+10. Run `node <runtime> call <operation> --input <json-file> --verbose` for an
    actual Backlog API call during the beta period. Only after the
    mutation approval, add its required `--allow CREATE`, `--allow UPDATE`, or
    `--allow DELETE` permission. Add `--confirm-destructive` only after the
    separate destructive confirmation.
-9. Inspect exit status and the JSON `success`, `diagnostics`, and `trace`
+11. Inspect exit status and the JSON `success`, `diagnostics`, and `trace`
    fields before reporting success.
-10. After a mutation, perform a focused read-back when proportionate.
+12. After a mutation, perform a focused read-back when proportionate.
 
 Use `--dry-run` to validate operation input without calling Backlog. It still
-requires configured client metadata, but it performs no Backlog request. Use
-`--verbose` with dry-run only when its diagnostic output is useful. Metadata
-commands such as `--version`, `tools list`, and `trace` do not need it.
+enforces environment and call-level write permissions and destructive
+confirmation, but it does not resolve credentials or perform a Backlog request.
+Use `--verbose` with dry-run only when its diagnostic output is useful.
+Metadata commands such as `--version`, `tools list`, `tools describe`, and
+`trace` do not need it.
 
 ## Safety Rules
 
 - Read-only requests may proceed when target and scope are clear.
+- Treat `BACKLOG_API_ALLOWED_PERMISSIONS` as an environment-level maximum.
+  Never weaken or modify it implicitly. If the required permission is absent,
+  stop and tell the user which permission the environment must enable.
 - Before every create, update, or delete, obtain just-in-time user approval
   naming the permission class, organization, target, and material change. The
   request that initiated the workflow does not itself satisfy this approval.
@@ -103,6 +115,7 @@ commands such as `--version`, `tools list`, and `trace` do not need it.
   prior approval and obtain a new one before invoking the CLI.
 - After that first approval, pass only the corresponding `--allow CREATE`,
   `--allow UPDATE`, or `--allow DELETE` permission.
+- Do not imply that `--allow` can exceed `BACKLOG_API_ALLOWED_PERMISSIONS`.
 - Treat every `delete_*` operation, `reset_unread_notification_count`, and any
   other broad or difficult-to-reverse operation as destructive.
 - For a destructive operation, obtain a second, separate confirmation after
@@ -136,9 +149,9 @@ The runtime writes one JSON envelope to stdout containing:
 With `--verbose`, safe API access events are written separately to stderr as
 `verbose: `-prefixed JSON. Inspect them for operation, method, CRUD permission,
 organization class, start/success/failure state, allowlisted target/result IDs
-or keys, duration, changed field names, pagination, and an available failure
-HTTP status. Do not expect a successful HTTP status or rate-limit values, and
-do not merge these events into the stdout JSON envelope.
+or keys, duration, changed field names, pagination, an available actual HTTP
+status, and validated rate-limit values. Do not merge these events into the
+stdout JSON envelope.
 
 Treat a nonzero exit code, `success: false`, configuration failure, validation
 failure, or upstream error diagnostic as a failed operation.

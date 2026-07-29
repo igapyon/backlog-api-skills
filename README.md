@@ -4,7 +4,7 @@
 Backlog through the bundled `backlog-api` Node CLI runtime.
 
 This product is currently beta. Its version remains a numeric Semantic Version
-such as `0.3.4`; beta status is not encoded in the version number.
+such as `0.5.0`; beta status is not encoded in the version number.
 
 The Backlog MCP-equivalent Node Core/CLI is maintained separately in the sister
 [`backlog-api`](https://github.com/igapyon/backlog-api) repository. This
@@ -31,7 +31,7 @@ release artifacts belong to `backlog-api`, not this repository.
 - explicit triggers: `igapyon-backlog-api`, `backlog-api`, or
   `backlog-api-skills`
 - backend policy: CLI only
-- bundled runtime: `runtime/backlog-api-0.3.4.mjs`
+- bundled runtime: `runtime/backlog-api-0.5.0.mjs`
 - runtime source record: `runtime/backlog-api-source.json`
 
 Generic mentions of Backlog, issues, projects, wikis, or pull requests do not
@@ -43,24 +43,29 @@ activate the Skill by themselves.
 - a Backlog account with API access
 - `BACKLOG_DOMAIN` and `BACKLOG_API_KEY`, or the Node runtime's
   multi-organization environment variables
+- `BACKLOG_API_ALLOWED_PERMISSIONS` when write operations are allowed
 
 Credentials are inherited from the runtime process environment. They are not
 stored, printed, or bundled by this repository.
 
 The bundled CLI allows read operations by default. Create, update, and delete
-operations require an explicit `--allow CREATE`, `--allow UPDATE`, or
-`--allow DELETE` argument for that invocation, and the Agent must obtain the
-user's just-in-time approval before supplying it. A destructive or broad
-operation requires a second, separate confirmation after the mutation approval;
-one approval cannot satisfy both gates.
+operations must be enabled both by the environment-level
+`BACKLOG_API_ALLOWED_PERMISSIONS` maximum and by an explicit `--allow CREATE`,
+`--allow UPDATE`, or `--allow DELETE` argument for that invocation. The Agent
+must obtain the user's just-in-time approval before supplying the call-level
+permission. A destructive or broad operation requires a second, separate
+confirmation after the mutation approval; one approval cannot satisfy both
+gates.
 
 During the beta period, run actual Backlog API calls with `--verbose` by
 default. The CLI keeps the JSON result on stdout and writes a safe access
 summary to stderr as `verbose: `-prefixed JSON. It includes allowlisted resource
-IDs or keys and execution metadata, but excludes credentials, bodies, search
-text, personal data, and error bodies. Do not persist verbose diagnostics unless
-the user explicitly approves the destination and handling. Metadata commands do
-not need `--verbose`, and dry-run uses it only when diagnostic output is useful.
+IDs or keys, execution metadata, an available actual HTTP status, and validated
+rate-limit values, but excludes credentials, bodies, search text, personal data,
+and error bodies. Do not persist verbose diagnostics unless the user explicitly
+approves the destination and handling. Metadata commands do not need
+`--verbose`. Dry-run does not resolve credentials or call Backlog and uses
+`--verbose` only when diagnostic output is useful.
 
 ### Local Connection Configuration
 
@@ -72,6 +77,7 @@ example domain:
 ```dotenv
 BACKLOG_DOMAIN=userunique.backlog.com
 BACKLOG_API_KEY=
+BACKLOG_API_ALLOWED_PERMISSIONS=READ
 ```
 
 Apply the following safety rules:
@@ -92,7 +98,7 @@ explicitly when running the bundled runtime:
 
 ```bash
 printf '{}\n' | node --env-file=<agent-workspace>/workplace/backlog.env \
-  skills/igapyon-backlog-api/runtime/backlog-api-0.3.4.mjs \
+  skills/igapyon-backlog-api/runtime/backlog-api-0.5.0.mjs \
   call get_space --input - --verbose
 ```
 
@@ -120,11 +126,11 @@ checksum, then import the asset with its exact Release tag and commit:
 
 ```bash
 npm run import:runtime:release -- \
-  --version 0.3.4 \
-  --tag v0.3.4 \
-  --commit 58b96fd26995bafdee00aa89a8616a711b0563f9 \
-  --artifact /path/to/backlog-api-0.3.4.mjs \
-  --expected-sha256 d872523d353504dcb591d5b4094e729b96588b167f5c351bd57354a8b6dd960c
+  --version 0.5.0 \
+  --tag v0.5.0 \
+  --commit 3f73b9bf557f70500b3268ef111dd3de4c97c284 \
+  --artifact /path/to/backlog-api-0.5.0.mjs \
+  --expected-sha256 ef52032b4e31248d302e927081361a1f8577e1252bf38a397beb4eb08db56916
 ```
 
 The import validates the asset checksum and reported version, then records the

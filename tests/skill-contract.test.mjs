@@ -13,6 +13,9 @@ test("skill contract keeps explicit activation and CLI-only boundary", () => {
   assert.match(skill, /This skill is `cli-only`/);
   assert.match(skill, /do not call the Backlog REST API directly/);
   assert.match(skill, /do not probe MCP tools as an automatic fallback/i);
+  assert.match(skill, /tools describe <operation>/);
+  assert.match(skill, /BACKLOG_API_ALLOWED_PERMISSIONS/);
+  assert.match(skill, /does not resolve credentials or perform a Backlog request/);
 });
 
 test("skill contract protects credentials and destructive operations", () => {
@@ -33,7 +36,7 @@ test("required bundled files exist", () => {
     "LICENSE",
     "THIRD_PARTY_NOTICES.md",
     "licenses/backlog-mcp-server-MIT.txt",
-    "runtime/backlog-api-0.3.4.mjs",
+    "runtime/backlog-api-0.5.0.mjs",
     "runtime/backlog-api-source.json",
     "references/INDEX.md",
     "references/runtime/operations-map.md",
