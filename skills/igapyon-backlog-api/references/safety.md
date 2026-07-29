@@ -23,12 +23,19 @@ authorization headers are secrets.
 
 Read operations do not change Backlog state.
 
-The CLI permits `READ` only by default. Before every mutation, present its
-permission class, organization, exact target, and material payload, then ask
-for just-in-time user approval. The request that started the workflow is not
-itself the approval to supply a permission flag.
+The CLI permits `READ` only by default. `BACKLOG_API_ALLOWED_PERMISSIONS`
+defines the environment-level maximum and defaults to `READ` when unset.
+`--allow` cannot enable a permission omitted from that maximum. Never weaken or
+modify the environment maximum implicitly.
 
-Only after that approval, add the narrow permission flag for the one invocation:
+Before every mutation, present its permission class, organization, exact
+target, and material payload, then ask for just-in-time user approval. The
+request that started the workflow is not itself the approval to supply a
+permission flag.
+
+Confirm that the required permission is already enabled in
+`BACKLOG_API_ALLOWED_PERMISSIONS`. Only after approval, add the narrow
+permission flag for the one invocation:
 
 - `--allow CREATE` for additions
 - `--allow UPDATE` for updates and notification-state changes
@@ -68,7 +75,7 @@ unexpectedly contains them.
 During the beta period, use `--verbose` for actual Backlog API calls. Treat its
 stderr events as transient diagnostics and do not save them without explicit
 user approval. Events are `verbose: `-prefixed JSON and may contain allowlisted
-resource IDs or keys, duration, changed field names, pagination, and an
-available failure HTTP status. They omit credentials, bodies, search text,
-personal data, and error bodies. Stop and report a safety defect if any excluded
-value appears.
+resource IDs or keys, duration, changed field names, pagination, an available
+actual HTTP status, and validated rate-limit values. They omit credentials,
+bodies, search text, personal data, and error bodies. Stop and report a safety
+defect if any excluded value appears.

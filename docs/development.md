@@ -2,8 +2,8 @@
 
 ## Design Record
 
-- checked date: 2026-07-22
-- repository version: `0.3.4`
+- checked date: 2026-07-29
+- repository version: `0.5.0`
 - implementation maturity: beta, standalone CLI-backed Agent Skill
 - version policy: keep numeric Semantic Versions without a beta suffix
 - Node provider: <https://github.com/igapyon/backlog-api>
