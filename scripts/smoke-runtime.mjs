@@ -25,7 +25,7 @@ const catalog = JSON.parse(
 assert.equal(version, packageJson.version);
 assert.equal(catalog.product.name, "backlog-api");
 assert.equal(catalog.product.version, packageJson.version);
-assert.equal(catalog.operations.length, 59);
+assert.equal(catalog.operations.length, 63);
 
 const description = JSON.parse(
   execFileSync("node", [runtime, "tools", "describe", "get_issue"], {

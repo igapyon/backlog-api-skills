@@ -50,6 +50,18 @@ test("bundled runtime matches the pinned backlog-api source record", () => {
     `https://github.com/igapyon/backlog-api/releases/download/${source.source.tag}/${source.artifact.file}`
   );
   assert.match(source.source.commit, /^[0-9a-f]{40}$/);
+
+  const traceExecution = spawnSync(process.execPath, [runtime, "trace", "get_space"], {
+    encoding: "utf8"
+  });
+  assert.equal(traceExecution.status, 0);
+  const trace = JSON.parse(traceExecution.stdout);
+  assert.deepEqual(source.upstream, {
+    repository: trace.repository,
+    version: trace.version,
+    tag: trace.tag,
+    commit: trace.commit
+  });
 });
 
 test("bundled runtime requires environment and call-level CREATE permission", () => {
@@ -92,11 +104,11 @@ test("bundled runtime requires environment and call-level CREATE permission", ()
   assert.equal(JSON.parse(allowed.stdout).dryRun, true);
 });
 
-test("all 59 operations are classified and every mutation is denied without call permission", () => {
+test("all 63 operations are classified and every mutation is denied without call permission", () => {
   const catalogExecution = runRuntime(["tools", "list"]);
   assert.equal(catalogExecution.status, 0);
   const catalog = JSON.parse(catalogExecution.stdout);
-  const expectedCounts = { READ: 36, CREATE: 9, UPDATE: 10, DELETE: 4 };
+  const expectedCounts = { READ: 37, CREATE: 10, UPDATE: 11, DELETE: 5 };
   const actualCounts = Object.fromEntries(
     Object.keys(expectedCounts).map((permission) => [
       permission,
@@ -104,8 +116,44 @@ test("all 59 operations are classified and every mutation is denied without call
     ])
   );
 
-  assert.equal(catalog.operations.length, 59);
+  assert.equal(catalog.operations.length, 63);
   assert.deepEqual(actualCounts, expectedCounts);
+  assert.deepEqual(
+    catalog.operations
+      .filter((operation) => [
+        "add_related_issue",
+        "get_related_issues",
+        "remove_related_issue",
+        "update_issue_comment"
+      ].includes(operation.name))
+      .map(({ name, requiredPermission, mutationClass }) => ({
+        name,
+        requiredPermission,
+        mutationClass
+      })),
+    [
+      {
+        name: "add_related_issue",
+        requiredPermission: "CREATE",
+        mutationClass: "mutation"
+      },
+      {
+        name: "get_related_issues",
+        requiredPermission: "READ",
+        mutationClass: "read"
+      },
+      {
+        name: "remove_related_issue",
+        requiredPermission: "DELETE",
+        mutationClass: "destructive"
+      },
+      {
+        name: "update_issue_comment",
+        requiredPermission: "UPDATE",
+        mutationClass: "mutation"
+      }
+    ]
+  );
 
   for (const operation of catalog.operations.filter(
     (candidate) => candidate.requiredPermission !== "READ"
@@ -152,7 +200,7 @@ test("every DELETE operation requires the separate destructive confirmation gate
     (operation) => operation.requiredPermission === "DELETE"
   );
 
-  assert.equal(deletes.length, 4);
+  assert.equal(deletes.length, 5);
   for (const operation of deletes) {
     const unconfirmed = runRuntime(
       ["call", operation.name, "--input", "-", "--dry-run", "--allow", "DELETE"],

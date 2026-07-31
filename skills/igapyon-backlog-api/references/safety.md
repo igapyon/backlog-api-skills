@@ -53,6 +53,7 @@ permission for that invocation. Do not reuse approval from another operation.
 High-impact mutations include:
 
 - any `delete_*` operation
+- `remove_related_issue`
 - project deletion
 - broad notification-state reset
 - bulk or cross-project changes
