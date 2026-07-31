@@ -36,7 +36,7 @@ test("required bundled files exist", () => {
     "LICENSE",
     "THIRD_PARTY_NOTICES.md",
     "licenses/backlog-mcp-server-MIT.txt",
-    "runtime/backlog-api-0.5.0.mjs",
+    "runtime/backlog-api-0.6.0.mjs",
     "runtime/backlog-api-source.json",
     "references/INDEX.md",
     "references/runtime/operations-map.md",
@@ -51,6 +51,18 @@ test("required bundled files exist", () => {
       fs.existsSync(path.resolve(skillRoot, relativePath)),
       true,
       `missing skill file: ${relativePath}`
+    );
+  }
+});
+
+test("generated discovery index matches the indexed files", () => {
+  const index = JSON.parse(fs.readFileSync(path.resolve(skillRoot, "index.json"), "utf8"));
+
+  for (const entry of index.files) {
+    assert.equal(
+      fs.statSync(path.resolve(skillRoot, entry.path)).size,
+      entry.size,
+      `stale index size: ${entry.path}`
     );
   }
 });

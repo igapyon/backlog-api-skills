@@ -29,6 +29,7 @@ const reportedVersion = execFileSync(process.execPath, [artifact, "--version"], 
 if (reportedVersion !== options.version) {
   throw new Error(`release artifact version mismatch: expected ${options.version}, got ${reportedVersion}`);
 }
+const upstream = readUpstreamIdentity(artifact);
 
 const runtimeDir = path.resolve(root, "skills", "igapyon-backlog-api", "runtime");
 const runtimePath = path.resolve(runtimeDir, releaseFile);
@@ -59,12 +60,7 @@ const sourceRecord = {
     sha256: actualSha256,
     checksumFile: checksumUrl
   },
-  upstream: {
-    repository: "https://github.com/nulab/backlog-mcp-server",
-    version: "0.13.2",
-    tag: "v0.13.2",
-    commit: "d12f010de976af11bcd43f1d3497dc7043d26e62"
-  }
+  upstream
 };
 
 fs.writeFileSync(
@@ -103,4 +99,22 @@ function parseArgs(args) {
 
 function usage() {
   return "usage: npm run import:runtime:release -- --version <x.y.z> --tag <vx.y.z> --commit <40-hex> --artifact <path> --expected-sha256 <64-hex>";
+}
+
+function readUpstreamIdentity(runtime) {
+  const trace = JSON.parse(execFileSync(process.execPath, [runtime, "trace", "get_space"], {
+    encoding: "utf8"
+  }));
+  const { repository, version, tag, commit } = trace;
+
+  if (
+    repository !== "https://github.com/nulab/backlog-mcp-server" ||
+    !/^\d+\.\d+\.\d+$/.test(version ?? "") ||
+    tag !== `v${version}` ||
+    !/^[0-9a-f]{40}$/.test(commit ?? "")
+  ) {
+    throw new Error("release artifact returned an invalid upstream trace identity");
+  }
+
+  return { repository, version, tag, commit };
 }

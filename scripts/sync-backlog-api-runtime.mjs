@@ -19,6 +19,7 @@ const sourceArtifact = path.resolve(sourceRoot, "bundle", "backlog-api.mjs");
 if (!fs.existsSync(sourceArtifact)) {
   throw new Error(`missing Node artifact; run npm run build in backlog-api first: ${sourceArtifact}`);
 }
+const upstream = readUpstreamIdentity(sourceArtifact);
 
 const runtimeDir = path.resolve(root, "skills", "igapyon-backlog-api", "runtime");
 const runtimeName = `backlog-api-${sourcePackage.version}.mjs`;
@@ -48,12 +49,7 @@ const sourceRecord = {
     file: runtimeName,
     sha256
   },
-  upstream: {
-    repository: "https://github.com/nulab/backlog-mcp-server",
-    version: "0.13.2",
-    tag: "v0.13.2",
-    commit: "d12f010de976af11bcd43f1d3497dc7043d26e62"
-  }
+  upstream
 };
 
 fs.writeFileSync(
@@ -81,4 +77,22 @@ function readJson(filename) {
 
 function git(cwd, args) {
   return execFileSync("git", args, { cwd, encoding: "utf8" });
+}
+
+function readUpstreamIdentity(runtime) {
+  const trace = JSON.parse(execFileSync(process.execPath, [runtime, "trace", "get_space"], {
+    encoding: "utf8"
+  }));
+  const { repository, version, tag, commit } = trace;
+
+  if (
+    repository !== "https://github.com/nulab/backlog-mcp-server" ||
+    !/^\d+\.\d+\.\d+$/.test(version ?? "") ||
+    tag !== `v${version}` ||
+    !/^[0-9a-f]{40}$/.test(commit ?? "")
+  ) {
+    throw new Error("runtime returned an invalid upstream trace identity");
+  }
+
+  return { repository, version, tag, commit };
 }

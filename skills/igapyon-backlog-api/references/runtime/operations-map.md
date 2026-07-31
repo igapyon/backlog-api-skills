@@ -11,10 +11,10 @@ The runtime is produced by <https://github.com/igapyon/backlog-api>. Use
 Use the newest versioned runtime under `runtime/`:
 
 ```bash
-node runtime/backlog-api-0.5.0.mjs --version
-node runtime/backlog-api-0.5.0.mjs tools list
-node runtime/backlog-api-0.5.0.mjs tools describe get_issue
-node runtime/backlog-api-0.5.0.mjs trace get_issue
+node runtime/backlog-api-0.6.0.mjs --version
+node runtime/backlog-api-0.6.0.mjs tools list
+node runtime/backlog-api-0.6.0.mjs tools describe get_issue
+node runtime/backlog-api-0.6.0.mjs trace get_issue
 ```
 
 The installed absolute path may differ. Resolve it from the active skill
@@ -25,7 +25,7 @@ directory rather than assuming the current working directory.
 Pass exactly one JSON object:
 
 ```bash
-node runtime/backlog-api-0.5.0.mjs call get_issue --input request.json --verbose
+node runtime/backlog-api-0.6.0.mjs call get_issue --input request.json --verbose
 ```
 
 Use `--input -` for stdin. Use `tools describe <operation>` for the input JSON
@@ -54,15 +54,15 @@ selections are rejected before a Backlog call.
 
 ## Compatibility Baseline
 
-The current runtime contains 58 operations converted from upstream `v0.13.2`
-plus the Node-specific `get_rate_limit` operation, for 59 operations in total.
+The current runtime contains 62 operations converted from upstream `v0.14.0`
+plus the Node-specific `get_rate_limit` operation, for 63 operations in total.
 Use `tools list` for the authoritative bundled inventory.
 
 | Toolset | Read examples | Mutation examples |
 | --- | --- | --- |
 | `space` | `get_space`, `get_space_activities`, `get_users`, `get_myself`, `get_user_recent_updates`, `get_user_stars_count` | none |
 | `project` | `get_project_list`, `get_project`, `get_project_users` | `add_project`, `update_project`, `delete_project` |
-| `issue` | issue, comment, metadata, watching, and milestone reads | corresponding add/update/delete operations |
+| `issue` | issue, comment, related-issue, metadata, watching, and milestone reads | corresponding add/update/delete operations, including related-issue and comment updates |
 | `wiki` | `get_wiki_pages`, `get_wikis_count`, `get_wiki` | `add_wiki`, `update_wiki` |
 | `git` | repository and pull-request reads | pull-request and comment add/update operations |
 | `document` | `get_documents`, `get_document_tree`, `get_document` | upstream-named `addDocument` |
@@ -71,6 +71,8 @@ Use `tools list` for the authoritative bundled inventory.
 
 The camelCase operation `addDocument` and `count_notifications` spelling are
 preserved from the checked upstream contract. Do not silently rename them.
+`remove_related_issue` is a destructive `DELETE` operation and requires the
+separate destructive confirmation gate.
 
 ## Result Contract
 

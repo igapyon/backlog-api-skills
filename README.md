@@ -4,7 +4,7 @@
 Backlog through the bundled `backlog-api` Node CLI runtime.
 
 This product is currently beta. Its version remains a numeric Semantic Version
-such as `0.5.0`; beta status is not encoded in the version number.
+such as `0.6.0`; beta status is not encoded in the version number.
 
 The Backlog MCP-equivalent Node Core/CLI is maintained separately in the sister
 [`backlog-api`](https://github.com/igapyon/backlog-api) repository. This
@@ -31,7 +31,7 @@ release artifacts belong to `backlog-api`, not this repository.
 - explicit triggers: `igapyon-backlog-api`, `backlog-api`, or
   `backlog-api-skills`
 - backend policy: CLI only
-- bundled runtime: `runtime/backlog-api-0.5.0.mjs`
+- bundled runtime: `runtime/backlog-api-0.6.0.mjs`
 - runtime source record: `runtime/backlog-api-source.json`
 
 Generic mentions of Backlog, issues, projects, wikis, or pull requests do not
@@ -98,7 +98,7 @@ explicitly when running the bundled runtime:
 
 ```bash
 printf '{}\n' | node --env-file=<agent-workspace>/workplace/backlog.env \
-  skills/igapyon-backlog-api/runtime/backlog-api-0.5.0.mjs \
+  skills/igapyon-backlog-api/runtime/backlog-api-0.6.0.mjs \
   call get_space --input - --verbose
 ```
 
@@ -126,11 +126,11 @@ checksum, then import the asset with its exact Release tag and commit:
 
 ```bash
 npm run import:runtime:release -- \
-  --version 0.5.0 \
-  --tag v0.5.0 \
-  --commit 3f73b9bf557f70500b3268ef111dd3de4c97c284 \
-  --artifact /path/to/backlog-api-0.5.0.mjs \
-  --expected-sha256 ef52032b4e31248d302e927081361a1f8577e1252bf38a397beb4eb08db56916
+  --version 0.6.0 \
+  --tag v0.6.0 \
+  --commit 1535fa15a244a8eab992209a783e0bc7e0c9613d \
+  --artifact /path/to/backlog-api-0.6.0.mjs \
+  --expected-sha256 f43ad0a8d1a9f74916aef64a20463b0c2e3e55486546ebde8b9f39db100a18f3
 ```
 
 The import validates the asset checksum and reported version, then records the

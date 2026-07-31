@@ -27107,6 +27107,9 @@ var IssueSchema = external_exports.object({
   sharedFiles: external_exports.array(SharedFileSchema),
   stars: external_exports.array(StarSchema)
 });
+var RelatedIssueSchema = IssueSchema.extend({
+  type: external_exports.string()
+});
 var ProjectSchema = external_exports.object({
   id: external_exports.number(),
   projectKey: external_exports.string(),
@@ -27517,7 +27520,7 @@ function resolveIdOrField(entity, fieldName, values, t) {
   return { ok: true, value };
 }
 function tryResolveIdOrField(fieldName, values) {
-  return values.id !== void 0 ? values.id : values[fieldName];
+  return values.id !== void 0 && values.id > 0 ? values.id : values[fieldName];
 }
 var resolveIdOrKey = (entity, values, t) => resolveIdOrField(entity, "key", values, t);
 var resolveIdOrName = (entity, values, t) => resolveIdOrField(entity, "name", values, t);
@@ -28029,6 +28032,72 @@ var getIssuesTool = (backlog, { t }) => {
         ...rest,
         ...customFieldFiltersToPayload(customFields)
       });
+    }
+  };
+};
+
+// node_modules/backlog-mcp-server/build/tools/getRelatedIssues.js
+var getRelatedIssuesSchema = buildToolSchema((t) => ({
+  issueId: external_exports.number().optional().describe(t("TOOL_GET_RELATED_ISSUES_ISSUE_ID", "The numeric ID of the issue (e.g., 12345)")),
+  issueKey: external_exports.string().optional().describe(t("TOOL_GET_RELATED_ISSUES_ISSUE_KEY", "The key of the issue (e.g., 'PROJ-123')"))
+}));
+var getRelatedIssuesTool = (backlog, { t }) => {
+  return {
+    name: "get_related_issues",
+    description: t("TOOL_GET_RELATED_ISSUES_DESCRIPTION", "Returns list of issues related to a specific issue"),
+    schema: external_exports.object(getRelatedIssuesSchema(t)),
+    importantFields: ["issueKey", "summary", "status", "type"],
+    outputSchema: RelatedIssueSchema,
+    handler: async ({ issueId, issueKey }) => {
+      const result = resolveIdOrKey("issue", { id: issueId, key: issueKey }, t);
+      if (!result.ok) {
+        throw result.error;
+      }
+      return backlog.getRelatedIssues(result.value);
+    }
+  };
+};
+
+// node_modules/backlog-mcp-server/build/tools/addRelatedIssue.js
+var addRelatedIssueSchema = buildToolSchema((t) => ({
+  issueId: external_exports.number().optional().describe(t("TOOL_ADD_RELATED_ISSUE_ISSUE_ID", "The numeric ID of the issue (e.g., 12345)")),
+  issueKey: external_exports.string().optional().describe(t("TOOL_ADD_RELATED_ISSUE_ISSUE_KEY", "The key of the issue (e.g., 'PROJ-123')")),
+  targetIssueId: external_exports.number().describe(t("TOOL_ADD_RELATED_ISSUE_TARGET_ISSUE_ID", "The numeric ID of the issue to relate to (e.g., 12346)"))
+}));
+var addRelatedIssueTool = (backlog, { t }) => {
+  return {
+    name: "add_related_issue",
+    description: t("TOOL_ADD_RELATED_ISSUE_DESCRIPTION", "Relates an issue to another issue"),
+    schema: external_exports.object(addRelatedIssueSchema(t)),
+    outputSchema: RelatedIssueSchema,
+    handler: async ({ issueId, issueKey, targetIssueId }) => {
+      const result = resolveIdOrKey("issue", { id: issueId, key: issueKey }, t);
+      if (!result.ok) {
+        throw result.error;
+      }
+      return backlog.addRelatedIssue(result.value, { targetIssueId });
+    }
+  };
+};
+
+// node_modules/backlog-mcp-server/build/tools/removeRelatedIssue.js
+var removeRelatedIssueSchema = buildToolSchema((t) => ({
+  issueId: external_exports.number().optional().describe(t("TOOL_REMOVE_RELATED_ISSUE_ISSUE_ID", "The numeric ID of the issue (e.g., 12345)")),
+  issueKey: external_exports.string().optional().describe(t("TOOL_REMOVE_RELATED_ISSUE_ISSUE_KEY", "The key of the issue (e.g., 'PROJ-123')")),
+  relatedIssueId: external_exports.number().describe(t("TOOL_REMOVE_RELATED_ISSUE_RELATED_ISSUE_ID", "The numeric ID of the related issue to unlink (e.g., 12346)"))
+}));
+var removeRelatedIssueTool = (backlog, { t }) => {
+  return {
+    name: "remove_related_issue",
+    description: t("TOOL_REMOVE_RELATED_ISSUE_DESCRIPTION", "Removes the relation between an issue and a related issue"),
+    schema: external_exports.object(removeRelatedIssueSchema(t)),
+    outputSchema: RelatedIssueSchema,
+    handler: async ({ issueId, issueKey, relatedIssueId }) => {
+      const result = resolveIdOrKey("issue", { id: issueId, key: issueKey }, t);
+      if (!result.ok) {
+        throw result.error;
+      }
+      return backlog.removeRelatedIssue(result.value, relatedIssueId);
     }
   };
 };
@@ -28624,6 +28693,7 @@ var updateIssueSchema = buildToolSchema((t) => ({
   assigneeId: external_exports.number().optional().describe(t("TOOL_UPDATE_ISSUE_ASSIGNEE_ID", "User ID of the assignee")),
   notifiedUserId: external_exports.array(external_exports.number()).optional().describe(t("TOOL_UPDATE_ISSUE_NOTIFIED_USER_ID", "User IDs to notify")),
   attachmentId: external_exports.array(external_exports.number()).optional().describe(t("TOOL_UPDATE_ISSUE_ATTACHMENT_ID", "Attachment IDs")),
+  parentIssueId: external_exports.number().optional().describe(t("TOOL_UPDATE_ISSUE_PARENT_ISSUE_ID", "Parent issue ID")),
   comment: external_exports.string().optional().describe(t("TOOL_UPDATE_ISSUE_COMMENT", "Comment to add when updating the issue")),
   customFields: external_exports.array(external_exports.object({
     id: external_exports.number().describe(t("TOOL_UPDATE_ISSUE_CUSTOM_FIELD_ID", "The ID of the custom field (e.g., 12345)")),
@@ -28653,6 +28723,30 @@ var updateIssueTool = (backlog, { t }) => {
         ...customFieldPayload
       };
       return backlog.patchIssue(result.value, finalPayload);
+    }
+  };
+};
+
+// node_modules/backlog-mcp-server/build/tools/updateIssueComment.js
+var updateIssueCommentSchema = buildToolSchema((t) => ({
+  issueId: external_exports.number().optional().describe(t("TOOL_UPDATE_ISSUE_COMMENT_ISSUE_ID", "The numeric ID of the issue (e.g., 12345)")),
+  issueKey: external_exports.string().optional().describe(t("TOOL_UPDATE_ISSUE_COMMENT_ISSUE_KEY", "The key of the issue (e.g., 'PROJ-123')")),
+  commentId: external_exports.number().describe(t("TOOL_UPDATE_ISSUE_COMMENT_COMMENT_ID", "Comment ID")),
+  content: external_exports.string().describe(t("TOOL_UPDATE_ISSUE_COMMENT_CONTENT", "Comment content"))
+}));
+var updateIssueCommentTool = (backlog, { t }) => {
+  return {
+    name: "update_issue_comment",
+    description: t("TOOL_UPDATE_ISSUE_COMMENT_DESCRIPTION", "Updates a comment on an issue"),
+    schema: external_exports.object(updateIssueCommentSchema(t)),
+    outputSchema: IssueCommentSchema,
+    importantFields: ["id", "content", "createdUser", "updated"],
+    handler: async ({ issueId, issueKey, commentId, content }) => {
+      const result = resolveIdOrKey("issue", { id: issueId, key: issueKey }, t);
+      if (!result.ok) {
+        throw result.error;
+      }
+      return backlog.patchIssueComment(result.value, commentId, { content });
     }
   };
 };
@@ -28988,6 +29082,10 @@ var allTools = (backlog, helper) => {
           deleteIssueTool(backlog, helper),
           getIssueCommentsTool(backlog, helper),
           addIssueCommentTool(backlog, helper),
+          updateIssueCommentTool(backlog, helper),
+          getRelatedIssuesTool(backlog, helper),
+          addRelatedIssueTool(backlog, helper),
+          removeRelatedIssueTool(backlog, helper),
           getPrioritiesTool(backlog, helper),
           getCategoriesTool(backlog, helper),
           getCustomFieldsTool(backlog, helper),
@@ -30381,10 +30479,14 @@ function createLocalToolset(backlog) {
 // src/core/operation-input-constraints.ts
 var ISSUE_ID_OR_KEY_OPERATIONS = [
   "add_issue_comment",
+  "add_related_issue",
   "delete_issue",
   "get_issue",
   "get_issue_comments",
-  "update_issue"
+  "get_related_issues",
+  "remove_related_issue",
+  "update_issue",
+  "update_issue_comment"
 ];
 var PROJECT_ID_OR_KEY_OPERATIONS = [
   "add_pull_request",
@@ -30470,6 +30572,7 @@ var OPERATION_POLICIES = new Map([
     "get_issue_comments",
     "get_issue_types",
     "get_issues",
+    "get_related_issues",
     "get_myself",
     "get_notifications",
     "get_priorities",
@@ -30501,6 +30604,7 @@ var OPERATION_POLICIES = new Map([
     "add_project",
     "add_pull_request",
     "add_pull_request_comment",
+    "add_related_issue",
     "add_version_milestone",
     "add_watching",
     "add_wiki"
@@ -30509,6 +30613,7 @@ var OPERATION_POLICIES = new Map([
     "mark_notification_as_read",
     "mark_watching_as_read",
     "update_issue",
+    "update_issue_comment",
     "update_project",
     "update_pull_request",
     "update_pull_request_comment",
@@ -30520,7 +30625,8 @@ var OPERATION_POLICIES = new Map([
     "delete_issue",
     "delete_project",
     "delete_version",
-    "delete_watching"
+    "delete_watching",
+    "remove_related_issue"
   ], "destructive", "DELETE"),
   ...policyEntries([
     "reset_unread_notification_count"
@@ -30624,6 +30730,7 @@ function compareUtf16(left, right) {
 }
 var OPERATION_EXAMPLES = /* @__PURE__ */ new Map([
   ["get_issue", [{ issueKey: "PROJ-1" }, { issueId: 12345 }]],
+  ["get_related_issues", [{ issueKey: "PROJ-1" }, { issueId: 12345 }]],
   ["get_project", [{ projectKey: "PROJ" }, { projectId: 12345 }]],
   ["get_rate_limit", [{}]],
   [
@@ -30634,6 +30741,12 @@ var OPERATION_EXAMPLES = /* @__PURE__ */ new Map([
       issueTypeId: 1,
       priorityId: 3
     }]
+  ],
+  ["add_related_issue", [{ issueKey: "PROJ-1", targetIssueId: 12346 }]],
+  ["remove_related_issue", [{ issueKey: "PROJ-1", relatedIssueId: 12346 }]],
+  [
+    "update_issue_comment",
+    [{ issueKey: "PROJ-1", commentId: 12345, content: "Updated comment" }]
   ],
   ["delete_issue", [{ issueKey: "PROJ-1" }]]
 ]);
@@ -30860,15 +30973,15 @@ var upstream_tool_mapping_default = {
   schemaVersion: 1,
   upstream: {
     repository: "https://github.com/nulab/backlog-mcp-server",
-    version: "0.13.2",
-    tag: "v0.13.2",
-    commit: "d12f010de976af11bcd43f1d3497dc7043d26e62",
-    checked: "2026-07-22"
+    version: "0.14.0",
+    tag: "v0.14.0",
+    commit: "9da42fcfb5b69f1455e3864c49f2b57a45a4cbe9",
+    checked: "2026-07-31"
   },
   target: {
     repository: "backlog-api",
     product: "backlog-api",
-    version: "0.5.0",
+    version: "0.6.0",
     strategy: "published-handler-direct-invocation"
   },
   operations: [
@@ -30929,6 +31042,16 @@ var upstream_tool_mapping_default = {
       origin: "upstream",
       upstreamSource: "src/tools/addPullRequestComment.ts",
       upstreamTest: "src/tools/addPullRequestComment.test.ts",
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
+    },
+    {
+      operation: "add_related_issue",
+      toolset: "issue",
+      mutationClass: "mutation",
+      origin: "upstream",
+      upstreamSource: "src/tools/addRelatedIssue.ts",
+      upstreamTest: "src/tools/addRelatedIssue.test.ts",
       targetEntry: "src/core/run-operation.ts",
       targetTest: "tests/upstream-differential.test.mjs"
     },
@@ -31243,6 +31366,16 @@ var upstream_tool_mapping_default = {
       targetTest: "tests/access-policy-and-rate-limit.test.mjs"
     },
     {
+      operation: "get_related_issues",
+      toolset: "issue",
+      mutationClass: "read",
+      origin: "upstream",
+      upstreamSource: "src/tools/getRelatedIssues.ts",
+      upstreamTest: "src/tools/getRelatedIssues.test.ts",
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
+    },
+    {
       operation: "get_resolutions",
       toolset: "issue",
       mutationClass: "read",
@@ -31383,6 +31516,16 @@ var upstream_tool_mapping_default = {
       targetTest: "tests/upstream-differential.test.mjs"
     },
     {
+      operation: "remove_related_issue",
+      toolset: "issue",
+      mutationClass: "destructive",
+      origin: "upstream",
+      upstreamSource: "src/tools/removeRelatedIssue.ts",
+      upstreamTest: "src/tools/removeRelatedIssue.test.ts",
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
+    },
+    {
       operation: "reset_unread_notification_count",
       toolset: "notifications",
       mutationClass: "broad-mutation",
@@ -31399,6 +31542,16 @@ var upstream_tool_mapping_default = {
       origin: "upstream",
       upstreamSource: "src/tools/updateIssue.ts",
       upstreamTest: "src/tools/updateIssue.test.ts",
+      targetEntry: "src/core/run-operation.ts",
+      targetTest: "tests/upstream-differential.test.mjs"
+    },
+    {
+      operation: "update_issue_comment",
+      toolset: "issue",
+      mutationClass: "mutation",
+      origin: "upstream",
+      upstreamSource: "src/tools/updateIssueComment.ts",
+      upstreamTest: "src/tools/updateIssueComment.test.ts",
       targetEntry: "src/core/run-operation.ts",
       targetTest: "tests/upstream-differential.test.mjs"
     },
@@ -32216,6 +32369,30 @@ var Backlog = class extends Request {
     return this.delete(`issues/${issueIdOrKey}/sharedFiles/${id}`);
   }
   /**
+  * Get the list of issues related to the specified issue.
+  *
+  * GET /api/v2/issues/:issueIdOrKey/relatedIssues
+  */
+  getRelatedIssues(issueIdOrKey) {
+    return this.get(`issues/${issueIdOrKey}/relatedIssues`);
+  }
+  /**
+  * Add a related issue to the specified issue.
+  *
+  * POST /api/v2/issues/:issueIdOrKey/relatedIssues
+  */
+  addRelatedIssue(issueIdOrKey, params) {
+    return this.post(`issues/${issueIdOrKey}/relatedIssues`, params);
+  }
+  /**
+  * Remove a related issue from the specified issue.
+  *
+  * DELETE /api/v2/issues/:issueIdOrKey/relatedIssues/:relatedIssueId
+  */
+  removeRelatedIssue(issueIdOrKey, relatedIssueId) {
+    return this.delete(`issues/${issueIdOrKey}/relatedIssues/${relatedIssueId}`);
+  }
+  /**
   * https://developer.nulab.com/docs/backlog/api/2/get-wiki-page-list/
   */
   getWikis(params) {
@@ -32632,8 +32809,8 @@ var Issue;
 // src/product.ts
 var product = Object.freeze({
   name: "backlog-api",
-  version: "0.5.0",
-  upstream: "backlog-mcp-server@0.13.2"
+  version: "0.6.0",
+  upstream: "backlog-mcp-server@0.14.0"
 });
 
 // src/core/backlog-access-context.ts
@@ -32889,6 +33066,8 @@ var TARGET_FIELDS = /* @__PURE__ */ new Set([
   "issueId",
   "issueKey",
   "issueIdOrKey",
+  "targetIssueId",
+  "relatedIssueId",
   "wikiId",
   "repoId",
   "repoName",
@@ -32903,6 +33082,8 @@ function extractInputAccessMetadata(operation, input, permission) {
     spaceKey: stringValue(input.spaceKey),
     ...idOrKey(input.projectId, input.projectKey, input.projectIdOrKey, "project"),
     ...idOrKey(input.issueId, input.issueKey, input.issueIdOrKey, "issue"),
+    targetIssueId: numberValue(input.targetIssueId),
+    relatedIssueId: numberValue(input.relatedIssueId),
     wikiId: numberValue(input.wikiId),
     repositoryId: numberValue(input.repositoryId) ?? numberValue(input.repoId),
     repositoryName: stringValue(input.repositoryName) ?? stringValue(input.repoName),

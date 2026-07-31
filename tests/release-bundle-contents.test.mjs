@@ -33,7 +33,7 @@ test("release zip contains installable skill files and excludes development-only
   assertIncludes(entries, `skills/${skillName}/references/workflow/request-routing.md`);
   assertIncludes(entries, `skills/${skillName}/references/safety.md`);
   assertIncludes(entries, `skills/${skillName}/references/upstream-compatibility.md`);
-  assertIncludes(entries, `skills/${skillName}/runtime/backlog-api-0.5.0.mjs`);
+  assertIncludes(entries, `skills/${skillName}/runtime/backlog-api-0.6.0.mjs`);
   assertIncludes(entries, `skills/${skillName}/runtime/backlog-api-source.json`);
   assertIncludes(entries, `skills/${skillName}/LICENSE`);
   assertIncludes(entries, `skills/${skillName}/THIRD_PARTY_NOTICES.md`);

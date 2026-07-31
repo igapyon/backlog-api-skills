@@ -54,7 +54,7 @@ Node process explicitly. Begin live verification with the read-only
 
 ```bash
 printf '{}\n' | node --env-file=<agent-workspace>/workplace/backlog.env \
-  <skill-directory>/runtime/backlog-api-0.5.0.mjs \
+  <skill-directory>/runtime/backlog-api-0.6.0.mjs \
   call get_space --input - --verbose
 ```
 
@@ -72,9 +72,9 @@ printf '{}\n' | node --env-file=<agent-workspace>/workplace/backlog.env \
 Verify installation without credentials:
 
 ```bash
-node runtime/backlog-api-0.5.0.mjs --version
-node runtime/backlog-api-0.5.0.mjs tools list
-node runtime/backlog-api-0.5.0.mjs tools describe get_space
+node runtime/backlog-api-0.6.0.mjs --version
+node runtime/backlog-api-0.6.0.mjs tools list
+node runtime/backlog-api-0.6.0.mjs tools describe get_space
 ```
 
 An actual Backlog operation requires configured credentials. A missing or

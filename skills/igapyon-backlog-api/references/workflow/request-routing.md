@@ -26,7 +26,7 @@
 An explicit request such as “create this issue” or “post this comment” begins
 the mutation workflow but does not replace the just-in-time approval above.
 
-## Delete Workflow
+## Delete and Destructive Workflow
 
 1. Read the exact target.
 2. Present the organization, resource type, stable key/ID, and human-readable
@@ -37,9 +37,11 @@ the mutation workflow but does not replace the just-in-time approval above.
 4. Ask for mutation approval to supply `--allow DELETE`.
 5. After that approval, separately explain the destructive impact and ask for
    a second confirmation.
-6. Delete only after both approvals, passing `--allow DELETE` and
-   `--confirm-destructive`.
-7. Report the upstream result without implying recoverability.
+6. Execute the destructive operation only after both approvals, passing
+   `--allow DELETE` and `--confirm-destructive`.
+7. Report the upstream result without implying recoverability. This includes
+   `remove_related_issue`, which removes an issue relation rather than an issue
+   itself.
 
 Never convert “remove from my view,” “close,” “archive,” or “mark as read” into
 a delete without resolving the intended Backlog operation.
