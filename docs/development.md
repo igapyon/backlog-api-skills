@@ -2,10 +2,12 @@
 
 ## Design Record
 
-- checked date: 2026-07-31
-- repository version: `0.6.0`
+- checked date: 2026-08-01
+- repository version: `0.6.1`
 - implementation maturity: beta, standalone CLI-backed Agent Skill
 - version policy: keep numeric Semantic Versions without a beta suffix
+- runtime policy: the Skill version may advance ahead of the published runtime;
+  the runtime version and provenance remain independently pinned
 - Node provider: <https://github.com/igapyon/backlog-api>
 - original combined implementation commit:
   `d734c4fb1ecb91abfc2acf2b4995f3f8a4273fd2`
@@ -16,6 +18,8 @@ This repository owns:
 
 - Agent Skill activation and CLI-only backend policy
 - user-facing credential and mutation safety rules
+- fixed-runner workflow contracts and local approval handoffs for supported
+  mechanical operations
 - request routing, target resolution, and result reporting guidance
 - working-context and cross-product integration proposals
 - the versioned Node runtime bundled into the Skill
@@ -38,7 +42,8 @@ The sister `backlog-api` repository owns:
 4. run `npm run import:runtime:release` with the exact version, tag, commit,
    asset path, and checksum
 5. confirm `backlog-api-source.json` records the GitHub Release asset identity
-6. update runtime references and the Skill repository version
+6. update runtime references when the runtime changes; update the Skill
+   repository version independently as needed
 7. regenerate the Skill index
 8. run the complete Skill build and isolated bundle tests
 
@@ -52,6 +57,29 @@ backlog-mcp-server tag/commit/tool
   -> backlog-api version/commit/operation/artifact
   -> backlog-api-skills version/workflow/runtime checksum
 ```
+
+## Fixed Single-Issue Delete Runner
+
+`scripts/backlog-api-workflow-manifest.mjs` exposes the two fixed routes:
+
+```text
+issue.delete.preflight
+  -> get_issue once + integrity-checked pending handoff + final prompt
+issue.delete.handoff.apply --apply
+  -> exactly one pending handoff + delete_issue once + stable result
+```
+
+The agent routes an exact single-issue deletion request to the preflight and
+returns its `humanOutput` unchanged. Following the user's separate final
+confirmation, it invokes the apply route with only `--apply`; the runner, not
+the agent, restores the reviewed target and fixed delete arguments. The normal
+success path has two Backlog API calls, no routine dry-run, and no routine
+post-delete read-back. Failed applies are recorded as `unresolved` and are not
+automatically retried.
+
+The runner never receives API-key values as CLI arguments or writes them to its
+handoff. Handoffs live under the credential-owning workspace's ignored
+`workplace/backlog-api-skill/delete-handoffs/` directory.
 
 ## Commands
 

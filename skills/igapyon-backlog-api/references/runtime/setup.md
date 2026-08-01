@@ -28,6 +28,24 @@ The runtime also uses `BACKLOG_API_ALLOWED_PERMISSIONS` as the environment-level
 maximum for `READ`, `CREATE`, `UPDATE`, and `DELETE`. It defaults to `READ` when
 unset. A write must be allowed both here and by the call-level `--allow`.
 
+## Issuing an API Key in Backlog
+
+Open the user menu in the upper-right corner of Backlog, choose **Personal
+settings**, then select **API**. Add a purpose-only memo (for example, `Agent
+Skills connection`) and select **Register** to issue a key.
+
+The agent provides these steps as guidance only. The user performs **Register**
+and copies the key directly from Backlog into their local credential store.
+The agent does not operate the settings UI or receive the key value.
+
+Never include the API key value in that memo, in documentation, screenshots,
+chat, or tracked files. Copy it only into the local connection file described
+below.
+
+If a key is exposed in a conversation, image, or other supplied material,
+revoke it in this API settings page and issue a replacement. Do not reuse the
+exposed key.
+
 ## Local Connection File
 
 When the user explicitly requests a local connection file, use
