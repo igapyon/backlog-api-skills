@@ -4,7 +4,7 @@
 Backlog through the bundled `backlog-api` Node CLI runtime.
 
 This product is currently beta. Its version remains a numeric Semantic Version
-such as `0.6.0`; beta status is not encoded in the version number.
+such as `0.6.1`; beta status is not encoded in the version number.
 
 The Backlog MCP-equivalent Node Core/CLI is maintained separately in the sister
 [`backlog-api`](https://github.com/igapyon/backlog-api) repository. This
@@ -31,11 +31,16 @@ release artifacts belong to `backlog-api`, not this repository.
 - explicit triggers: `igapyon-backlog-api`, `backlog-api`, or
   `backlog-api-skills`
 - backend policy: CLI only
+- Skill version: `0.6.1`
 - bundled runtime: `runtime/backlog-api-0.6.0.mjs`
 - runtime source record: `runtime/backlog-api-source.json`
 
 Generic mentions of Backlog, issues, projects, wikis, or pull requests do not
 activate the Skill by themselves.
+
+The Skill and the bundled runtime are versioned independently. Consult the
+runtime source record for the exact runtime version and provenance rather than
+inferring it from the Skill version.
 
 ## Requirements and Authentication
 
@@ -66,6 +71,53 @@ and error bodies. Do not persist verbose diagnostics unless the user explicitly
 approves the destination and handling. Metadata commands do not need
 `--verbose`. Dry-run does not resolve credentials or call Backlog and uses
 `--verbose` only when diagnostic output is useful.
+
+### Exact Single-Issue Deletion
+
+For an explicit request to delete one named Backlog issue, the bundled fixed
+runner replaces the agent-assembled read/dry-run/delete/read-back sequence.
+It makes one target read at preflight, asks the one final destructive question,
+then makes one delete call after the user's reply. It does not use a routine
+dry-run or post-delete read-back.
+
+Start preflight from the same agent workspace that owns the ignored
+`workplace/` directory:
+
+```bash
+node --env-file=<agent-workspace>/workplace/backlog.env \
+  skills/igapyon-backlog-api/scripts/backlog-api-skill-run.mjs \
+  --format human issue.delete.preflight --issue-key PROJ-123
+```
+
+Return the runner's question unchanged. Only after the user separately
+confirms it, apply the sole pending handoff without repeating the issue key,
+organization, or delete flags:
+
+```bash
+node --env-file=<agent-workspace>/workplace/backlog.env \
+  skills/igapyon-backlog-api/scripts/backlog-api-skill-run.mjs \
+  --format human issue.delete.handoff.apply --apply
+```
+
+The handoff is stored locally under
+`workplace/backlog-api-skill/delete-handoffs/`, with permissions restricted to
+the workspace owner. It binds the reviewed issue and runtime checksum, never
+contains an API-key value, requires exactly one pending record, and never
+retries an unresolved delete automatically. The route is limited to one
+`delete_issue`; other destructive operations retain the normal confirmation
+workflow.
+
+### Issuing a Backlog API Key
+
+In Backlog, open the user menu in the upper-right corner, then select
+**Personal settings** and **API**. Enter a purpose-only note such as
+`Agent Skills connection`, select **Register**, and copy the newly issued key.
+
+This is a guidance-only workflow. The user performs the registration and copy
+steps; the Skill does not operate the settings UI or receive the key value.
+
+Do not put the API key value in the note, documentation, screenshots, chat, or
+tracked files. Keep the value only in the local connection file below.
 
 ### Local Connection Configuration
 

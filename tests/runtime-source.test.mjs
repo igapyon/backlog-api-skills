@@ -38,12 +38,12 @@ test("bundled runtime matches the pinned backlog-api source record", () => {
   const packageJson = JSON.parse(fs.readFileSync(path.resolve(ROOT, "package.json"), "utf8"));
   const sha256 = crypto.createHash("sha256").update(fs.readFileSync(runtime)).digest("hex");
 
+  assert.match(packageJson.version, /^\d+\.\d+\.\d+$/);
   assert.equal(source.source.repository, "https://github.com/igapyon/backlog-api");
-  assert.equal(source.source.version, packageJson.version);
-  assert.equal(source.source.tag, `v${packageJson.version}`);
+  assert.equal(source.source.tag, `v${source.source.version}`);
   assert.equal(source.source.dirty, false);
   assert.equal(source.artifact.origin, "github-release-asset");
-  assert.equal(source.artifact.file, `backlog-api-${packageJson.version}.mjs`);
+  assert.equal(source.artifact.file, `backlog-api-${source.source.version}.mjs`);
   assert.equal(source.artifact.sha256, sha256);
   assert.equal(
     source.artifact.url,

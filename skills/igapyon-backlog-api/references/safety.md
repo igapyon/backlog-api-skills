@@ -30,8 +30,15 @@ modify the environment maximum implicitly.
 
 Before every mutation, present its permission class, organization, exact
 target, and material payload, then ask for just-in-time user approval. The
-request that started the workflow is not itself the approval to supply a
-permission flag.
+request that started the workflow normally is not itself the approval to supply
+a permission flag.
+
+For one destructive target, an initiating request may count as the mutation
+approval only when it explicitly names the stable key/ID and destructive action
+and a read resolves exactly that target. Do not ask for duplicate mutation
+approval in that case. Still require the separate destructive confirmation
+below. If the organization, target, operation, or material scope changes or is
+ambiguous, discard the initiating approval and ask again.
 
 Confirm that the required permission is already enabled in
 `BACKLOG_API_ALLOWED_PERMISSIONS`. Only after approval, add the narrow
@@ -66,6 +73,31 @@ One user reply must not satisfy both gates. A deletion therefore requires the
 first approval before `--allow DELETE` and another confirmation before
 `--confirm-destructive`. A broad reset similarly requires UPDATE approval and
 then a separate destructive confirmation.
+
+## Fixed Single-Issue Delete Runner
+
+The exception for an exact `delete_issue` request is implemented only by
+`scripts/backlog-api-skill-run.mjs`; do not reproduce it with a direct runtime
+command. It requires `READ,DELETE` in the environment before preflight.
+
+Preflight resolves the named issue exactly once and writes a `0600` pending
+handoff under the agent workspace's ignored
+`workplace/backlog-api-skill/delete-handoffs/` directory. The handoff binds the
+resolved numeric issue ID, optional organization, reviewed title, runtime file
+and checksum, and fixed delete input. It contains no credential value.
+
+The original request may count as mutation approval only if it named the stable
+issue key/ID and deletion action. The preflight human output is still the
+required, separate final destructive confirmation. After that reply, invoke
+only `issue.delete.handoff.apply --apply`; the runner must find exactly one
+pending integrity-checked handoff. Never select a handoff by guesswork or
+rebuild its target, `--allow`, or `--confirm-destructive` arguments in chat.
+
+Apply changes the handoff to `applying` before the single remote delete call.
+An unsuccessful or interrupted call is recorded as `unresolved`; do not retry
+it automatically. An atomic apply lock prevents the same pending handoff from
+being invoked twice concurrently. A successful delete is recorded as `applied`.
+The route has no routine dry-run or post-delete read-back.
 
 ## Diagnostics
 

@@ -10,6 +10,12 @@ const skillName = "igapyon-backlog-api";
 const packageJson = JSON.parse(
   fs.readFileSync(path.resolve(ROOT, "package.json"), "utf8")
 );
+const runtimeSource = JSON.parse(
+  fs.readFileSync(
+    path.resolve(ROOT, "skills", skillName, "runtime", "backlog-api-source.json"),
+    "utf8"
+  )
+);
 const zipPath = path.resolve(ROOT, `bundle/igapyon-${repoName}-${packageJson.version}.zip`);
 
 test("release zip contains installable skill files and excludes development-only files", () => {
@@ -33,7 +39,9 @@ test("release zip contains installable skill files and excludes development-only
   assertIncludes(entries, `skills/${skillName}/references/workflow/request-routing.md`);
   assertIncludes(entries, `skills/${skillName}/references/safety.md`);
   assertIncludes(entries, `skills/${skillName}/references/upstream-compatibility.md`);
-  assertIncludes(entries, `skills/${skillName}/runtime/backlog-api-0.6.0.mjs`);
+  assertIncludes(entries, `skills/${skillName}/scripts/backlog-api-workflow-manifest.mjs`);
+  assertIncludes(entries, `skills/${skillName}/scripts/backlog-api-skill-run.mjs`);
+  assertIncludes(entries, `skills/${skillName}/runtime/${runtimeSource.artifact.file}`);
   assertIncludes(entries, `skills/${skillName}/runtime/backlog-api-source.json`);
   assertIncludes(entries, `skills/${skillName}/LICENSE`);
   assertIncludes(entries, `skills/${skillName}/THIRD_PARTY_NOTICES.md`);

@@ -1,2 +1,2 @@
 name: igapyon-backlog-api
-description: Operate Nulab Backlog through a bundled, traceable Node CLI conversion with explicit activation and mutation safety.
+description: Operate Nulab Backlog through a bundled, traceable Node CLI, use a fixed handoff runner for exact single-issue deletion, and provide guidance-only API key setup without handling secrets.
