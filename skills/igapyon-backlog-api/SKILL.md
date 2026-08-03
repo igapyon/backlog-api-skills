@@ -1,6 +1,6 @@
 ---
 name: igapyon-backlog-api
-description: Beta. Use only when the user explicitly names `igapyon-backlog-api`, `backlog-api`, or `backlog-api-skills`, explicitly asks to apply this skill for Nulab Backlog API workflows, or explicitly asks how to issue or configure a Backlog API key for this Skill. This skill provides guidance-only API-key setup and runs the bundled backlog-api Node CLI converted from Nulab Backlog MCP Server tool handlers. It never issues or receives API key values. Do not activate for generic backlog grooming, task management, GitHub, or project-management requests.
+description: Beta. Use only when the user explicitly names `igapyon-backlog-api`, `backlog-api`, or `backlog-api-skills`, explicitly asks to apply this skill for Nulab Backlog API workflows, or explicitly asks how to issue or configure a Backlog API key for this Skill. This skill provides guidance-only API-key setup and runs the bundled backlog-api Node CLI converted from Nulab Backlog MCP Server tool handlers. It includes common fixed Issue search and single-Issue deletion routes, and never issues or receives API key values. Do not activate for generic backlog grooming, task management, GitHub, or project-management requests.
 ---
 
 # Backlog API
@@ -82,6 +82,53 @@ received.
 
 If the fixed runner cannot proceed, stop and report its concise result. Do not
 fall back to a direct `delete_issue` CLI command.
+
+## Common Issue Search Route
+
+Use the fixed readonly `issue.search` route for supported Backlog Issue-search
+variants. The one runner owns condition parsing, resolving `自分` to the
+authenticated user, `get_issues` pagination, sorting, and concise rendering.
+It never exposes an arbitrary runtime-operation or JSON-input surface.
+
+```bash
+node --env-file=<agent-workspace>/workplace/backlog.env \
+  <skill-directory>/scripts/backlog-api-skill-run.mjs \
+  --format human issue.search --project PROJECT_KEY|PROJECT_ID \
+  [--organization NAME] [--incomplete] [--keyword TEXT] \
+  [--assignee me|NAME|ID] [--priority NAME|ID] \
+  [--milestone NAME|ID] [--category NAME|ID] [--version NAME|ID] \
+  [--resolution NAME|ID] [--due-from YYYY-MM-DD] [--due-to YYYY-MM-DD] \
+  [--created-within-days DAYS] [--updated-within-days DAYS] \
+  [--sort created|updated] [--order asc|desc]
+```
+
+`--project` and at least one search condition are required. Assignee, priority,
+milestone, category, version, and resolution options are repeatable. They accept
+an ID or an exact name; the runner resolves names only after fixing the project
+and fails closed when a match is missing or ambiguous. `--assignee me` resolves
+the authenticated user's ID. The default ordering is update time descending;
+relative day values are `1` through `3660`, and due dates use `YYYY-MM-DD`.
+`--keyword` uses Backlog's own Issue keyword matching. It does not include a
+project-wide comment-search contract; do not emulate one by fetching every
+Issue's comments.
+
+Backlog `get_issues` returns at most `100` issues per API call. The runner fixes
+the page size to `100` and advances `offset` until it receives the final short
+page. This is an API paging unit, not a final-result limit. Project, keyword,
+resolved-ID, and date conditions are sent to Backlog before paging.
+`--incomplete` is currently applied after each page is returned, so that search
+may still scan completed issues in the selected project; the human result
+reports both the retained issue count and the scanned issue/page counts.
+
+For the common request `完了以外のIssue一覧` or `未完了Issue一覧`, keep using the
+compatibility alias `issue.list.incomplete --project PROJECT_KEY|PROJECT_ID
+[--organization NAME]`. It calls the same shared search implementation with
+`--incomplete`; it is not a separate pagination implementation.
+
+Return the runner's human output unchanged. Do not replace either route with
+agent-assembled pagination, raw `get_issues` calls, or temporary JSON. Extend
+the `issue.search` input contract when adding a new supported condition rather
+than adding a separate MJS runner.
 
 ## Required First Checks for Other Runtime Operations
 

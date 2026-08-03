@@ -26,7 +26,7 @@ import {
 
 export const RUNNER_SCHEMA_VERSION = "backlog-api-skills.runner/v1";
 export const HANDOFF_SCHEMA_VERSION = "backlog-api-skills.issue-delete-handoff/v1";
-export const PRODUCT_VERSION = "0.6.1";
+export const PRODUCT_VERSION = "0.6.2";
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const SKILL_ROOT = path.resolve(SCRIPT_DIRECTORY, "..");
@@ -35,6 +35,13 @@ const HANDOFF_ID = /^[a-z0-9-]{36}$/i;
 const ORGANIZATION_NAME = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
 const ISSUE_KEY = /^\S{1,100}$/;
 const PERMISSIONS = new Set(["READ", "CREATE", "UPDATE", "DELETE"]);
+const CLOSED_STATUS_ID = 4;
+const ISSUE_PAGE_SIZE = 100;
+const ISSUE_SEARCH_FIELDS = "{ issueKey summary status { id name } created updated }";
+const SEARCH_SORT_FIELDS = new Set(["created", "updated"]);
+const SEARCH_ORDER_FIELDS = new Set(["asc", "desc"]);
+const MAX_RELATIVE_DAYS = 3660;
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 export class BacklogSkillRunnerError extends Error {
   constructor(code, message) {
@@ -97,6 +104,12 @@ function requirePreflightPermissions(environment) {
   }
   if (!permissions.has("DELETE")) {
     throw new BacklogSkillRunnerError("DELETE_PERMISSION_NOT_ENABLED", "DELETE permission is not enabled");
+  }
+}
+
+function requireReadPermission(environment) {
+  if (!parsePermissionSet(environment).has("READ")) {
+    throw new BacklogSkillRunnerError("READ_PERMISSION_NOT_ENABLED", "READ permission is not enabled");
   }
 }
 
@@ -191,6 +204,200 @@ function parseDeleteApplyArgs(argumentsList) {
     );
   }
   return { apply };
+}
+
+function parseIncompleteIssueListArgs(argumentsList) {
+  const options = { organization: undefined, project: undefined };
+  for (let index = 0; index < argumentsList.length; index += 1) {
+    const flag = argumentsList[index];
+    if (flag !== "--organization" && flag !== "--project") {
+      throw new BacklogSkillRunnerError("UNKNOWN_OPTION", `Unknown option: ${flag}`);
+    }
+    const optionName = flag === "--organization" ? "organization" : "project";
+    if (options[optionName] !== undefined) {
+      throw new BacklogSkillRunnerError("DUPLICATE_OPTION", `Duplicate ${flag}`);
+    }
+    const value = argumentsList[index + 1];
+    if (value === undefined || value.startsWith("--")) {
+      throw new BacklogSkillRunnerError("MISSING_OPTION_VALUE", `Missing value for ${flag}`);
+    }
+    index += 1;
+    if (flag === "--organization" && !ORGANIZATION_NAME.test(value)) {
+      throw new BacklogSkillRunnerError("INVALID_ORGANIZATION", "Invalid organization name");
+    }
+    options[optionName] = flag === "--project" ? parseIdOrName(value, flag) : value;
+  }
+  if (options.project === undefined) {
+    throw new BacklogSkillRunnerError("PROJECT_REQUIRED", "--project is required");
+  }
+  return createIssueSearchOptions({ ...options, incomplete: true });
+}
+
+function createIssueSearchOptions(overrides = {}) {
+  return {
+    organization: undefined,
+    project: undefined,
+    incomplete: false,
+    keyword: undefined,
+    assignees: [],
+    priorities: [],
+    milestones: [],
+    categories: [],
+    versions: [],
+    resolutions: [],
+    dueFrom: undefined,
+    dueTo: undefined,
+    createdWithinDays: undefined,
+    updatedWithinDays: undefined,
+    sort: "updated",
+    order: "desc",
+    ...overrides
+  };
+}
+
+function parseIdOrName(value, optionName) {
+  const normalized = value.trim();
+  if (!normalized) {
+    throw new BacklogSkillRunnerError("INVALID_OPTION_VALUE", `Invalid value for ${optionName}`);
+  }
+  if (/^[1-9]\d*$/.test(normalized)) {
+    const id = Number(normalized);
+    if (!Number.isSafeInteger(id)) {
+      throw new BacklogSkillRunnerError("INVALID_OPTION_VALUE", `Invalid value for ${optionName}`);
+    }
+    return id;
+  }
+  return normalized;
+}
+
+function parseIsoDate(value, optionName) {
+  if (!ISO_DATE.test(value)) {
+    throw new BacklogSkillRunnerError("INVALID_OPTION_VALUE", `Invalid value for ${optionName}`);
+  }
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value) {
+    throw new BacklogSkillRunnerError("INVALID_OPTION_VALUE", `Invalid value for ${optionName}`);
+  }
+  return value;
+}
+
+function addSearchReference(options, optionName, value, flag) {
+  const reference = value === "me" && optionName === "assignees"
+    ? "me"
+    : parseIdOrName(value, flag);
+  if (options[optionName].some((entry) => entry === reference)) {
+    throw new BacklogSkillRunnerError("DUPLICATE_OPTION_VALUE", `Duplicate value for ${flag}`);
+  }
+  options[optionName].push(reference);
+}
+
+function parsePositiveInteger(value, optionName) {
+  if (!/^[1-9]\d*$/.test(value)
+    || !Number.isSafeInteger(Number(value))
+    || Number(value) > MAX_RELATIVE_DAYS) {
+    throw new BacklogSkillRunnerError("INVALID_OPTION_VALUE", `Invalid value for ${optionName}`);
+  }
+  return Number(value);
+}
+
+function parseIssueSearchArgs(argumentsList) {
+  const options = createIssueSearchOptions();
+  const seenOptions = new Set();
+  const singleValueOptions = new Map([
+    ["--organization", "organization"],
+    ["--project", "project"],
+    ["--keyword", "keyword"],
+    ["--due-from", "dueFrom"],
+    ["--due-to", "dueTo"],
+    ["--created-within-days", "createdWithinDays"],
+    ["--updated-within-days", "updatedWithinDays"],
+    ["--sort", "sort"],
+    ["--order", "order"]
+  ]);
+  const repeatableOptions = new Map([
+    ["--assignee", "assignees"],
+    ["--priority", "priorities"],
+    ["--milestone", "milestones"],
+    ["--category", "categories"],
+    ["--version", "versions"],
+    ["--resolution", "resolutions"]
+  ]);
+
+  for (let index = 0; index < argumentsList.length; index += 1) {
+    const flag = argumentsList[index];
+    if (flag === "--incomplete") {
+      if (seenOptions.has(flag)) throw new BacklogSkillRunnerError("DUPLICATE_OPTION", "Duplicate --incomplete");
+      seenOptions.add(flag);
+      options.incomplete = true;
+      continue;
+    }
+    const optionName = singleValueOptions.get(flag) ?? repeatableOptions.get(flag);
+    if (optionName === undefined) {
+      throw new BacklogSkillRunnerError("UNKNOWN_OPTION", `Unknown option: ${flag}`);
+    }
+    if (singleValueOptions.has(flag) && seenOptions.has(flag)) {
+      throw new BacklogSkillRunnerError("DUPLICATE_OPTION", `Duplicate ${flag}`);
+    }
+    if (singleValueOptions.has(flag)) seenOptions.add(flag);
+    const value = argumentsList[index + 1];
+    if (value === undefined || value.startsWith("--")) {
+      throw new BacklogSkillRunnerError("MISSING_OPTION_VALUE", `Missing value for ${flag}`);
+    }
+    index += 1;
+
+    if (repeatableOptions.has(flag)) {
+      addSearchReference(options, optionName, value, flag);
+    } else if (optionName === "organization") {
+      if (!ORGANIZATION_NAME.test(value)) {
+        throw new BacklogSkillRunnerError("INVALID_ORGANIZATION", "Invalid organization name");
+      }
+      options.organization = value;
+    } else if (optionName === "project") {
+      options.project = parseIdOrName(value, flag);
+    } else if (optionName === "keyword") {
+      const keyword = value.trim();
+      if (!keyword) throw new BacklogSkillRunnerError("INVALID_OPTION_VALUE", "Invalid value for --keyword");
+      options.keyword = keyword;
+    } else if (optionName === "dueFrom" || optionName === "dueTo") {
+      options[optionName] = parseIsoDate(value, flag);
+    } else if (optionName === "createdWithinDays" || optionName === "updatedWithinDays") {
+      options[optionName] = parsePositiveInteger(value, flag);
+    } else if (optionName === "sort") {
+      if (!SEARCH_SORT_FIELDS.has(value)) {
+        throw new BacklogSkillRunnerError("INVALID_OPTION_VALUE", "Invalid value for --sort");
+      }
+      options.sort = value;
+    } else if (optionName === "order") {
+      if (!SEARCH_ORDER_FIELDS.has(value)) {
+        throw new BacklogSkillRunnerError("INVALID_OPTION_VALUE", "Invalid value for --order");
+      }
+      options.order = value;
+    }
+  }
+
+  if (options.project === undefined) {
+    throw new BacklogSkillRunnerError("PROJECT_REQUIRED", "--project is required");
+  }
+  if (options.dueFrom !== undefined
+    && options.dueTo !== undefined
+    && options.dueFrom > options.dueTo) {
+    throw new BacklogSkillRunnerError("INVALID_DATE_RANGE", "--due-from must not be after --due-to");
+  }
+  if (!options.incomplete
+    && options.keyword === undefined
+    && options.assignees.length === 0
+    && options.priorities.length === 0
+    && options.milestones.length === 0
+    && options.categories.length === 0
+    && options.versions.length === 0
+    && options.resolutions.length === 0
+    && options.dueFrom === undefined
+    && options.dueTo === undefined
+    && options.createdWithinDays === undefined
+    && options.updatedWithinDays === undefined) {
+    throw new BacklogSkillRunnerError("SEARCH_FILTER_REQUIRED", "At least one issue search filter is required");
+  }
+  return options;
 }
 
 export function parseRunnerCliArgs(argv) {
@@ -438,7 +645,7 @@ function finalConfirmation(target) {
   return `組織 ${target.organization} の ${target.issueKey}（「${target.summary}」）を完全に削除します。復元できません。実行しますか？`;
 }
 
-function makeResult({ workflow, status, mutationInvoked, handoffPath, target, humanOutput }) {
+function makeResult({ workflow, status, mutationInvoked, handoffPath, target, humanOutput, ...details }) {
   return {
     schemaVersion: RUNNER_SCHEMA_VERSION,
     workflow,
@@ -447,8 +654,389 @@ function makeResult({ workflow, status, mutationInvoked, handoffPath, target, hu
     mutationInvoked,
     ...(handoffPath === undefined ? {} : { handoffPath }),
     ...(target === undefined ? {} : { target }),
+    ...details,
     humanOutput
   };
+}
+
+function extractIssueSearchPage(result) {
+  if (!Array.isArray(result.result)) {
+    throw new BacklogSkillRunnerError("INVALID_RUNTIME_RESULT", "get_issues returned no issue list");
+  }
+  return result.result.map((issue) => {
+    if (!isRecord(issue)
+      || typeof issue.issueKey !== "string"
+      || !ISSUE_KEY.test(issue.issueKey)
+      || typeof issue.summary !== "string"
+      || typeof issue.created !== "string"
+      || typeof issue.updated !== "string"
+      || !isRecord(issue.status)
+      || !Number.isSafeInteger(issue.status.id)
+      || issue.status.id <= 0
+      || typeof issue.status.name !== "string") {
+      throw new BacklogSkillRunnerError("INVALID_RUNTIME_RESULT", "get_issues returned an invalid issue");
+    }
+    return {
+      issueKey: issue.issueKey,
+      summary: oneLine(issue.summary),
+      status: oneLine(issue.status.name, "unknown"),
+      statusId: issue.status.id,
+      created: issue.created,
+      updated: issue.updated
+    };
+  });
+}
+
+function sortIssueSearchResults(options, left, right) {
+  const sortField = options.sort;
+  if (left[sortField] !== right[sortField]) {
+    const comparison = left[sortField] < right[sortField] ? -1 : 1;
+    return options.order === "asc" ? comparison : -comparison;
+  }
+  return left.issueKey < right.issueKey ? -1 : left.issueKey > right.issueKey ? 1 : 0;
+}
+
+function calendarDaysAgo(days, now) {
+  const date = new Date(now);
+  date.setHours(0, 0, 0, 0);
+  date.setDate(date.getDate() - days);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function extractCurrentUserId(result) {
+  if (!isRecord(result.result) || !Number.isSafeInteger(result.result.id) || result.result.id <= 0) {
+    throw new BacklogSkillRunnerError("INVALID_RUNTIME_RESULT", "get_myself returned an invalid user ID");
+  }
+  return result.result.id;
+}
+
+function organizationInput(options) {
+  return options.organization === undefined ? {} : { organization: options.organization };
+}
+
+function resolveSearchProject(options, runtime, environment, dependencies) {
+  const result = invokeRuntime(dependencies, {
+    runtime,
+    operation: "get_project",
+    input: {
+      ...organizationInput(options),
+      ...(typeof options.project === "number"
+        ? { projectId: options.project }
+        : { projectKey: options.project }),
+      fields: "{ id projectKey name }"
+    },
+    callOptions: ["--verbose"],
+    environment
+  });
+  if (!result.success) throw runtimeFailure("get_project", result);
+  if (!isRecord(result.result)
+    || !Number.isSafeInteger(result.result.id)
+    || result.result.id <= 0
+    || typeof result.result.projectKey !== "string"
+    || !result.result.projectKey
+    || typeof result.result.name !== "string"
+    || !result.result.name) {
+    throw new BacklogSkillRunnerError("INVALID_RUNTIME_RESULT", "get_project returned an invalid project");
+  }
+  return {
+    id: result.result.id,
+    key: result.result.projectKey,
+    name: oneLine(result.result.name)
+  };
+}
+
+function resolveCurrentAssignee(options, runtime, environment, dependencies) {
+  const result = invokeRuntime(dependencies, {
+    runtime,
+    operation: "get_myself",
+    input: {
+      ...organizationInput(options),
+      fields: "{ id }"
+    },
+    callOptions: ["--verbose"],
+    environment
+  });
+  if (!result.success) throw runtimeFailure("get_myself", result);
+  return { id: extractCurrentUserId(result), label: "自分" };
+}
+
+function fetchSearchCatalog(options, project, runtime, environment, dependencies, operation) {
+  const projectOperations = new Set([
+    "get_project_users",
+    "get_categories",
+    "get_version_milestone_list"
+  ]);
+  const result = invokeRuntime(dependencies, {
+    runtime,
+    operation,
+    input: {
+      ...organizationInput(options),
+      ...(projectOperations.has(operation) ? { projectId: project.id } : {}),
+      fields: "{ id name }"
+    },
+    callOptions: ["--verbose"],
+    environment
+  });
+  if (!result.success) throw runtimeFailure(operation, result);
+  if (!Array.isArray(result.result)) {
+    throw new BacklogSkillRunnerError("INVALID_RUNTIME_RESULT", `${operation} returned no list`);
+  }
+  return result.result.map((entry) => {
+    if (!isRecord(entry)
+      || !Number.isSafeInteger(entry.id)
+      || entry.id <= 0
+      || typeof entry.name !== "string"
+      || !entry.name) {
+      throw new BacklogSkillRunnerError("INVALID_RUNTIME_RESULT", `${operation} returned an invalid entry`);
+    }
+    return { id: entry.id, name: entry.name };
+  });
+}
+
+function resolveCatalogReferences(references, catalog, resourceLabel) {
+  const resolved = [];
+  for (const reference of references) {
+    if (typeof reference === "number") {
+      resolved.push({ id: reference, label: `ID ${reference}` });
+      continue;
+    }
+    const matches = catalog.filter((entry) => entry.name === reference);
+    if (matches.length === 0) {
+      throw new BacklogSkillRunnerError(
+        "SEARCH_REFERENCE_NOT_FOUND",
+        `${resourceLabel} was not found: ${reference}`
+      );
+    }
+    if (matches.length > 1) {
+      throw new BacklogSkillRunnerError(
+        "SEARCH_REFERENCE_AMBIGUOUS",
+        `${resourceLabel} is ambiguous: ${reference}`
+      );
+    }
+    resolved.push({ id: matches[0].id, label: oneLine(matches[0].name) });
+  }
+  return deduplicateResolvedEntries(resolved);
+}
+
+function deduplicateResolvedEntries(entries) {
+  const ids = new Set();
+  return entries.filter((entry) => {
+    if (ids.has(entry.id)) return false;
+    ids.add(entry.id);
+    return true;
+  });
+}
+
+function resolveReferencesWithOperation({
+  references,
+  options,
+  project,
+  runtime,
+  environment,
+  dependencies,
+  operation,
+  resourceLabel
+}) {
+  const names = references.filter((reference) => typeof reference === "string");
+  const catalog = names.length === 0
+    ? []
+    : fetchSearchCatalog(options, project, runtime, environment, dependencies, operation);
+  return resolveCatalogReferences(references, catalog, resourceLabel);
+}
+
+function resolveSearchFilters(options, project, runtime, environment, dependencies) {
+  const assignees = [];
+  if (options.assignees.includes("me")) {
+    assignees.push(resolveCurrentAssignee(options, runtime, environment, dependencies));
+  }
+  const assigneeReferences = options.assignees.filter((reference) => reference !== "me");
+  assignees.push(...resolveReferencesWithOperation({
+    references: assigneeReferences,
+    options,
+    project,
+    runtime,
+    environment,
+    dependencies,
+    operation: "get_project_users",
+    resourceLabel: "Assignee"
+  }));
+
+  const priorities = resolveReferencesWithOperation({
+    references: options.priorities,
+    options,
+    project,
+    runtime,
+    environment,
+    dependencies,
+    operation: "get_priorities",
+    resourceLabel: "Priority"
+  });
+  const categories = resolveReferencesWithOperation({
+    references: options.categories,
+    options,
+    project,
+    runtime,
+    environment,
+    dependencies,
+    operation: "get_categories",
+    resourceLabel: "Category"
+  });
+
+  const versionReferences = [...options.versions, ...options.milestones];
+  const versionCatalog = versionReferences.some((reference) => typeof reference === "string")
+    ? fetchSearchCatalog(
+      options,
+      project,
+      runtime,
+      environment,
+      dependencies,
+      "get_version_milestone_list"
+    )
+    : [];
+  const versions = resolveCatalogReferences(options.versions, versionCatalog, "Version");
+  const milestones = resolveCatalogReferences(options.milestones, versionCatalog, "Milestone");
+  const resolutions = resolveReferencesWithOperation({
+    references: options.resolutions,
+    options,
+    project,
+    runtime,
+    environment,
+    dependencies,
+    operation: "get_resolutions",
+    resourceLabel: "Resolution"
+  });
+
+  return {
+    assignees: deduplicateResolvedEntries(assignees),
+    priorities,
+    categories,
+    versions,
+    milestones,
+    resolutions
+  };
+}
+
+function resolvedIds(entries) {
+  return entries.map((entry) => entry.id);
+}
+
+function issueSearchInput(options, offset, project, filters, now) {
+  return {
+    ...organizationInput(options),
+    projectId: [project.id],
+    ...(options.keyword === undefined ? {} : { keyword: options.keyword }),
+    ...(filters.assignees.length === 0 ? {} : { assigneeId: resolvedIds(filters.assignees) }),
+    ...(filters.priorities.length === 0 ? {} : { priorityId: resolvedIds(filters.priorities) }),
+    ...(filters.milestones.length === 0 ? {} : { milestoneId: resolvedIds(filters.milestones) }),
+    ...(filters.categories.length === 0 ? {} : { categoryId: resolvedIds(filters.categories) }),
+    ...(filters.versions.length === 0 ? {} : { versionId: resolvedIds(filters.versions) }),
+    ...(filters.resolutions.length === 0 ? {} : { resolutionId: resolvedIds(filters.resolutions) }),
+    ...(options.dueFrom === undefined ? {} : { dueDateSince: options.dueFrom }),
+    ...(options.dueTo === undefined ? {} : { dueDateUntil: options.dueTo }),
+    ...(options.createdWithinDays === undefined
+      ? {}
+      : { createdSince: calendarDaysAgo(options.createdWithinDays, now) }),
+    ...(options.updatedWithinDays === undefined
+      ? {}
+      : { updatedSince: calendarDaysAgo(options.updatedWithinDays, now) }),
+    fields: ISSUE_SEARCH_FIELDS,
+    sort: options.sort,
+    order: options.order,
+    offset,
+    count: ISSUE_PAGE_SIZE
+  };
+}
+
+function filterLabels(entries) {
+  return entries.map((entry) => entry.label).join(" / ");
+}
+
+function searchFilterSummary(options, resolvedFilters) {
+  const summaries = [];
+  if (options.incomplete) summaries.push("完了以外");
+  if (options.keyword !== undefined) summaries.push(`キーワード「${oneLine(options.keyword)}」`);
+  if (resolvedFilters.assignees.length > 0) summaries.push(`担当: ${filterLabels(resolvedFilters.assignees)}`);
+  if (resolvedFilters.priorities.length > 0) summaries.push(`優先度: ${filterLabels(resolvedFilters.priorities)}`);
+  if (resolvedFilters.milestones.length > 0) summaries.push(`マイルストーン: ${filterLabels(resolvedFilters.milestones)}`);
+  if (resolvedFilters.categories.length > 0) summaries.push(`カテゴリー: ${filterLabels(resolvedFilters.categories)}`);
+  if (resolvedFilters.versions.length > 0) summaries.push(`発生バージョン: ${filterLabels(resolvedFilters.versions)}`);
+  if (options.dueFrom !== undefined) summaries.push(`期限日: ${options.dueFrom}以降`);
+  if (options.dueTo !== undefined) summaries.push(`期限日: ${options.dueTo}以前`);
+  if (resolvedFilters.resolutions.length > 0) summaries.push(`完了理由: ${filterLabels(resolvedFilters.resolutions)}`);
+  if (options.createdWithinDays !== undefined) summaries.push(`登録: 過去${options.createdWithinDays}日`);
+  if (options.updatedWithinDays !== undefined) summaries.push(`更新: 過去${options.updatedWithinDays}日`);
+  return summaries.join("、");
+}
+
+function issueSearchOutput(options, project, filters, issues, scannedIssueCount, pageCount) {
+  const dateLabel = options.sort === "created" ? "登録日時" : "更新日時";
+  const direction = options.order === "asc" ? "古い順" : "新しい順";
+  const heading = `組織 ${options.organization ?? "default"}・プロジェクト ${project.key}（${project.name}）のIssue検索（${searchFilterSummary(options, filters)}、${dateLabel}${direction}）: ${issues.length}件（${scannedIssueCount}件を${pageCount}ページ取得）`;
+  const entries = issues.map((issue) => (
+    `${issue.issueKey}\t${issue.status}\t${issue.summary}\t${issue[options.sort]}`
+  ));
+  return [heading, ...entries].join("\n");
+}
+
+export function runIssueSearch(options, dependencies = {}, workflow = "issue.search") {
+  const environment = dependencies.environment ?? process.env;
+  requireReadPermission(environment);
+  const runtime = dependencies.runtime ?? resolveRuntimeIdentity(dependencies.skillRoot);
+  const now = dependencies.now?.() ?? new Date();
+  const project = resolveSearchProject(options, runtime, environment, dependencies);
+  const filters = resolveSearchFilters(options, project, runtime, environment, dependencies);
+  const issues = [];
+  let offset = 0;
+  let pageCount = 0;
+  let scannedIssueCount = 0;
+
+  while (true) {
+    const result = invokeRuntime(dependencies, {
+      runtime,
+      operation: "get_issues",
+      input: issueSearchInput(options, offset, project, filters, now),
+      callOptions: ["--verbose"],
+      environment
+    });
+    if (!result.success) throw runtimeFailure("get_issues", result);
+
+    const page = extractIssueSearchPage(result);
+    pageCount += 1;
+    scannedIssueCount += page.length;
+    issues.push(...page.filter((issue) => !options.incomplete || issue.statusId !== CLOSED_STATUS_ID));
+    if (page.length < ISSUE_PAGE_SIZE) break;
+    offset += page.length;
+  }
+
+  const sortedIssues = issues
+    .sort((left, right) => sortIssueSearchResults(options, left, right))
+    .map(({ statusId: ignoredStatusId, ...issue }) => issue);
+  return makeResult({
+    workflow,
+    status: "success",
+    mutationInvoked: false,
+    organization: options.organization ?? "default",
+    project,
+    issueCount: sortedIssues.length,
+    scannedIssueCount,
+    pageCount,
+    issues: sortedIssues,
+    humanOutput: issueSearchOutput(
+      options,
+      project,
+      filters,
+      sortedIssues,
+      scannedIssueCount,
+      pageCount
+    )
+  });
+}
+
+export function runIncompleteIssueList(options, dependencies = {}) {
+  return runIssueSearch(options, dependencies, "issue.list.incomplete");
 }
 
 export function runDeletePreflight(options, dependencies = {}) {
@@ -564,6 +1152,12 @@ export function runWorkflow(workflowId, workflowArguments, dependencies = {}) {
   if (!workflowManifestById().has(workflowId)) {
     throw new BacklogSkillRunnerError("UNKNOWN_WORKFLOW", `Unknown workflow: ${workflowId}`);
   }
+  if (workflowId === "issue.list.incomplete") {
+    return runIncompleteIssueList(parseIncompleteIssueListArgs(workflowArguments), dependencies);
+  }
+  if (workflowId === "issue.search") {
+    return runIssueSearch(parseIssueSearchArgs(workflowArguments), dependencies);
+  }
   if (workflowId === "issue.delete.preflight") {
     return runDeletePreflight(parseIssueTarget(workflowArguments, { requireApply: false }), dependencies);
   }
@@ -584,6 +1178,8 @@ function renderHelp() {
     "backlog-api-skill-run.mjs",
     "",
     "Usage:",
+    "  node <skill-root>/scripts/backlog-api-skill-run.mjs --format human issue.list.incomplete --project PROJECT_KEY|PROJECT_ID [--organization NAME]",
+    "  node <skill-root>/scripts/backlog-api-skill-run.mjs --format human issue.search --project PROJECT_KEY|PROJECT_ID [--organization NAME] [--incomplete] [--keyword TEXT] [--assignee me|NAME|ID] [--priority NAME|ID] [--milestone NAME|ID] [--category NAME|ID] [--version NAME|ID] [--resolution NAME|ID] [--due-from YYYY-MM-DD] [--due-to YYYY-MM-DD] [--created-within-days DAYS] [--updated-within-days DAYS] [--sort created|updated] [--order asc|desc]",
     "  node <skill-root>/scripts/backlog-api-skill-run.mjs --format human issue.delete.preflight --issue-key PROJ-123 [--organization NAME]",
     "  node <skill-root>/scripts/backlog-api-skill-run.mjs --format human issue.delete.handoff.apply --apply",
     "",
@@ -606,6 +1202,7 @@ function renderHumanError(error) {
   const code = error instanceof BacklogSkillRunnerError ? error.code : "INTERNAL_ERROR";
   const messages = {
     READ_PERMISSION_NOT_ENABLED: "READ が BACKLOG_API_ALLOWED_PERMISSIONS に含まれていません。",
+    SEARCH_FILTER_REQUIRED: "Issue検索には少なくとも一つの検索条件が必要です。",
     DELETE_PERMISSION_NOT_ENABLED: "DELETE が BACKLOG_API_ALLOWED_PERMISSIONS に含まれていません。",
     PENDING_HANDOFF_NOT_FOUND: "承認待ちの削除確認が見つかりません。もう一度確認してください。",
     AMBIGUOUS_PENDING_HANDOFF: "承認待ちの削除確認が複数あります。処理を中止しました。",
