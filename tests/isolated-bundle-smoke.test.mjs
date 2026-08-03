@@ -62,6 +62,14 @@ test("generated Skill bundle runs from an isolated install shape", () => {
 
     assert.match(
       execFileSync("node", [runner, "--help"], { encoding: "utf8" }),
+      /issue\.list\.incomplete --project PROJECT_KEY\|PROJECT_ID \[--organization NAME\]/
+    );
+    assert.match(
+      execFileSync("node", [runner, "--help"], { encoding: "utf8" }),
+      /issue\.search --project PROJECT_KEY\|PROJECT_ID \[--organization NAME\]/
+    );
+    assert.match(
+      execFileSync("node", [runner, "--help"], { encoding: "utf8" }),
       /issue\.delete\.handoff\.apply --apply/
     );
     const workflows = JSON.parse(
@@ -71,7 +79,7 @@ test("generated Skill bundle runs from an isolated install shape", () => {
     );
     assert.deepEqual(
       workflows.workflows.map((workflow) => workflow.id),
-      ["issue.delete.preflight", "issue.delete.handoff.apply"]
+      ["issue.search", "issue.list.incomplete", "issue.delete.preflight", "issue.delete.handoff.apply"]
     );
   } finally {
     fs.rmSync(isolatedRoot, { recursive: true, force: true });

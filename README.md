@@ -4,7 +4,7 @@
 Backlog through the bundled `backlog-api` Node CLI runtime.
 
 This product is currently beta. Its version remains a numeric Semantic Version
-such as `0.6.1`; beta status is not encoded in the version number.
+such as `0.6.2`; beta status is not encoded in the version number.
 
 The Backlog MCP-equivalent Node Core/CLI is maintained separately in the sister
 [`backlog-api`](https://github.com/igapyon/backlog-api) repository. This
@@ -31,7 +31,7 @@ release artifacts belong to `backlog-api`, not this repository.
 - explicit triggers: `igapyon-backlog-api`, `backlog-api`, or
   `backlog-api-skills`
 - backend policy: CLI only
-- Skill version: `0.6.1`
+- Skill version: `0.6.2`
 - bundled runtime: `runtime/backlog-api-0.6.0.mjs`
 - runtime source record: `runtime/backlog-api-source.json`
 
@@ -106,6 +106,51 @@ contains an API-key value, requires exactly one pending record, and never
 retries an unresolved delete automatically. The route is limited to one
 `delete_issue`; other destructive operations retain the normal confirmation
 workflow.
+
+### Common Issue Search
+
+One fixed `issue.search` workflow covers the supported Issue-search variants.
+It owns authenticated-user resolution, pagination, filtering, and ordering, so
+an Agent does not construct page requests or receive raw response pages. The
+result contains only issue key, status, summary, and relevant timestamp.
+
+```bash
+node --env-file=<agent-workspace>/workplace/backlog.env \
+  skills/igapyon-backlog-api/scripts/backlog-api-skill-run.mjs \
+  --format human issue.search --project MIGTEST01 --incomplete \
+  --keyword migration --assignee me --updated-within-days 7
+```
+
+`--project PROJECT_KEY|PROJECT_ID` is required. Supported conditions are
+`--incomplete`, `--keyword TEXT`, `--assignee me|NAME|ID`, `--priority
+NAME|ID`, `--milestone NAME|ID`, `--category NAME|ID`, `--version NAME|ID`,
+`--resolution NAME|ID`, `--due-from YYYY-MM-DD`, `--due-to YYYY-MM-DD`,
+`--created-within-days DAYS`, and `--updated-within-days DAYS`. The assignee,
+priority, milestone, category, version, and resolution options may be repeated.
+The runner resolves names by exact match after resolving the project and stops
+instead of guessing when a name is missing or ambiguous.
+
+Use `--sort created|updated` and `--order asc|desc` when the default newest
+updated order is unsuitable. At least one search condition is required;
+relative day values are `1` through `3660`. Add `--organization NAME` only when
+the target Backlog organization is explicitly specified. Backlog's Issue
+keyword condition is used as-is. Comment text is not part of this route, and
+the runner does not emulate project-wide comment search by fetching every
+Issue's comments.
+
+`issue.list.incomplete` remains as the concise compatibility alias for
+`issue.search --incomplete`; pass the required project as
+`issue.list.incomplete --project PROJECT_KEY|PROJECT_ID`. Both routes use the
+same MJS search implementation. Future supported conditions extend this shared
+contract rather than adding another MJS runner.
+
+Backlog returns at most `100` issues per `get_issues` call. The shared runner
+uses that maximum page size and follows `offset` until the final short page;
+`100` is not the final list limit. Project, keyword, resolved-ID, and date
+filters run in Backlog before paging. The current `--incomplete` condition is
+applied after retrieval, so it can still scan completed issues in the selected
+project. Results show both the retained count and the scanned issue/page
+counts.
 
 ### Issuing a Backlog API Key
 

@@ -2,6 +2,35 @@ export const WORKFLOW_MANIFEST_VERSION = "backlog-api-skills.workflow-manifest/v
 
 const WORKFLOWS = [
   {
+    id: "issue.search",
+    triggers: ["Issue検索", "Issueを検索", "自分に割り当てられたIssue一覧", "最近更新されたIssue一覧"],
+    requiredParameters: ["project", "at least one supported search condition"],
+    mutationLevel: "readonly",
+    approvalGate: "none",
+    runnerEntry: "backlog-api-skill-run.mjs",
+    runtimeReferences: [
+      "get_project",
+      "get_project_users",
+      "get_categories",
+      "get_version_milestone_list",
+      "get_priorities",
+      "get_resolutions",
+      "get_myself",
+      "get_issues"
+    ],
+    designReferences: ["references/workflow/request-routing.md", "references/safety.md"]
+  },
+  {
+    id: "issue.list.incomplete",
+    triggers: ["完了以外のIssue一覧", "未完了Issue一覧"],
+    requiredParameters: ["project"],
+    mutationLevel: "readonly",
+    approvalGate: "none",
+    runnerEntry: "backlog-api-skill-run.mjs",
+    runtimeReferences: ["get_project", "get_issues"],
+    designReferences: ["references/workflow/request-routing.md", "references/safety.md"]
+  },
+  {
     id: "issue.delete.preflight",
     triggers: ["ISSUE-123 を削除", "課題を削除"],
     requiredParameters: ["issue-key or issue-id"],

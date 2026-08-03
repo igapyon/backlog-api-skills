@@ -1,5 +1,49 @@
 # Request Routing
 
+## Common Issue Search Workflow
+
+For supported Issue searches, invoke `issue.search` from
+`scripts/backlog-api-skill-run.mjs`. It accepts a composable, bounded input
+contract: optional organization plus one or more of `--incomplete`, `--keyword
+TEXT`, `--assignee me|NAME|ID`, `--priority NAME|ID`, `--milestone NAME|ID`,
+`--category NAME|ID`, `--version NAME|ID`, `--resolution NAME|ID`, `--due-from
+YYYY-MM-DD`, `--due-to YYYY-MM-DD`, `--created-within-days DAYS`, and
+`--updated-within-days DAYS`. `--project PROJECT_KEY|PROJECT_ID` and at least
+one condition are required. `--sort created|updated` and `--order asc|desc` set
+the ordering; update time descending is the default. Relative day values are
+bounded to `1` through `3660`.
+
+The runner resolves the project first. Assignee, priority, milestone, category,
+version, and resolution options are repeatable and accept an exact name or ID.
+Name lookup stops when a match is missing or ambiguous; it never guesses.
+`--assignee me` uses one `get_myself` read. The runner then performs all
+`get_issues` paging itself, requests only key, status, summary, created time,
+and updated time, and returns a concise sorted result. `--incomplete` excludes
+only terminal Backlog status ID `4` (`完了`).
+
+Backlog limits one `get_issues` response to `100` issues. The runner therefore
+uses `count: 100`, increments `offset`, and continues until a page contains
+fewer than `100` issues. The number `100` is the paging unit, not the final
+result limit. Backlog applies the project, keyword, resolved-ID, and date
+filters before paging. The current runtime has no exclude-status input, so
+`--incomplete` filters status ID `4` after retrieval and may require scanning
+completed issues inside the selected project; the result exposes retained,
+scanned, and page counts.
+
+Comment text is outside this workflow. The runtime exposes comments per Issue,
+not a project-wide comment-search input, so do not approximate comment search
+with an unbounded Issue-by-Issue comment scan.
+
+For `完了以外のIssue一覧` or `未完了Issue一覧`, invoke the compatibility alias
+`issue.list.incomplete --project PROJECT_KEY|PROJECT_ID [--organization NAME]`;
+it delegates to the same shared search implementation with `--incomplete`
+enabled.
+
+Return the runner's human output unchanged. Do not implement condition mapping,
+current-user resolution, pagination, ordering, temporary request JSON, or
+result reshaping in the Agent. Add future conditions to `issue.search`'s input
+contract instead of adding a new MJS runner.
+
 ## Read Workflow
 
 1. Identify the organization and resource kind.

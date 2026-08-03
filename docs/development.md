@@ -3,7 +3,7 @@
 ## Design Record
 
 - checked date: 2026-08-01
-- repository version: `0.6.1`
+- repository version: `0.6.2`
 - implementation maturity: beta, standalone CLI-backed Agent Skill
 - version policy: keep numeric Semantic Versions without a beta suffix
 - runtime policy: the Skill version may advance ahead of the published runtime;

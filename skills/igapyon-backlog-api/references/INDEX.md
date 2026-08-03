@@ -9,10 +9,10 @@ Use this index to choose the smallest reference needed for the current request.
   reporting
 - `safety.md`: credentials, tenant boundaries, confirmation, and destructive
   operations
-- `../scripts/backlog-api-workflow-manifest.mjs`: fixed single-issue deletion
-  route identifiers and approval gates
-- `../scripts/backlog-api-skill-run.mjs`: deterministic single-issue deletion
-  preflight, handoff, and apply runner
+- `../scripts/backlog-api-workflow-manifest.mjs`: common Issue-search and
+  single-issue deletion route identifiers and approval gates
+- `../scripts/backlog-api-skill-run.mjs`: deterministic common Issue-search
+  and single-issue deletion runner
 - `upstream-compatibility.md`: checked Nulab Backlog MCP Server baseline
 
 The upstream Backlog MCP Server owns the converted tool schemas and handlers.

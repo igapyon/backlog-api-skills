@@ -20,7 +20,7 @@ const runtime = path.resolve(
   "runtime",
   source.artifact.file
 );
-const deletionRunner = path.resolve(
+const skillRunner = path.resolve(
   root,
   "skills",
   "igapyon-backlog-api",
@@ -29,10 +29,10 @@ const deletionRunner = path.resolve(
 );
 
 assert.equal(fs.existsSync(runtime), true, `missing runtime: ${runtime}`);
-assert.equal(fs.existsSync(deletionRunner), true, `missing deletion runner: ${deletionRunner}`);
+assert.equal(fs.existsSync(skillRunner), true, `missing skill runner: ${skillRunner}`);
 
 const version = execFileSync("node", [runtime, "--version"], { encoding: "utf8" }).trim();
-const deletionRunnerVersion = execFileSync("node", [deletionRunner, "--version"], {
+const skillRunnerVersion = execFileSync("node", [skillRunner, "--version"], {
   encoding: "utf8"
 }).trim();
 const catalog = JSON.parse(
@@ -41,7 +41,7 @@ const catalog = JSON.parse(
 
 assert.match(packageJson.version, /^\d+\.\d+\.\d+$/);
 assert.equal(version, source.source.version);
-assert.equal(deletionRunnerVersion, packageJson.version);
+assert.equal(skillRunnerVersion, packageJson.version);
 assert.equal(catalog.product.name, "backlog-api");
 assert.equal(catalog.product.version, source.source.version);
 assert.equal(catalog.operations.length, 63);
@@ -55,14 +55,19 @@ assert.equal(description.operation.name, "get_issue");
 assert.equal(description.operation.requiredPermission, "READ");
 assert.equal(description.operation.credentialsRequiredForDryRun, false);
 
-const deletionWorkflows = JSON.parse(
-  execFileSync("node", [deletionRunner, "--format", "json", "--list-workflows"], {
+const skillWorkflows = JSON.parse(
+  execFileSync("node", [skillRunner, "--format", "json", "--list-workflows"], {
     encoding: "utf8"
   })
 );
 assert.deepEqual(
-  deletionWorkflows.workflows.map((workflow) => workflow.id),
-  ["issue.delete.preflight", "issue.delete.handoff.apply"]
+  skillWorkflows.workflows.map((workflow) => workflow.id),
+  [
+    "issue.search",
+    "issue.list.incomplete",
+    "issue.delete.preflight",
+    "issue.delete.handoff.apply"
+  ]
 );
 
-process.stdout.write("[smoke:runtime] bundled backlog-api runtime and deletion runner passed\n");
+process.stdout.write("[smoke:runtime] bundled backlog-api runtime and skill runner passed\n");
