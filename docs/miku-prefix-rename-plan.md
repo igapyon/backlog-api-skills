@@ -34,45 +34,46 @@ GitHubリポジトリ名、package名、Release asset名は新名称へ移行す
 
 ## 2. 対象名称とWave 1の互換方針
 
-以下をWave 1の推奨方針とする。承認ゲートG0で確定する。
+以下は、基盤CLIの名称変更準備ブランチ（`miku-backlog-api` `0.7.0`）で
+確認した方針と整合させたWave 1の基準である。基盤Releaseが未公開のため、
+Skillsの実装開始とSkillsの最終version決定は、その公開・検証後まで行わない。
 
 | 契約 | 現在 | Wave 1の正式名称 | Wave 1の互換方針 |
 | --- | --- | --- | --- |
 | 基盤GitHubリポジトリ | `igapyon/backlog-api` | `igapyon/miku-backlog-api` | GitHub上でin-place rename |
 | 基盤package | `backlog-api` | `miku-backlog-api` | 変更 |
 | 基盤CLI | `backlog-api` | `miku-backlog-api` | 旧CLI名をaliasとして維持 |
-| 基盤bundle | `backlog-api*.mjs` | `miku-backlog-api*.mjs` | 移行Releaseに旧名assetも併載 |
-| 基盤source archive | `backlog-api-sources-*` | `miku-backlog-api-sources-*` | 移行Releaseに旧名assetも併載 |
+| 基盤bundle | `backlog-api*.mjs` | `miku-backlog-api*.mjs` | 新Releaseは正式assetだけを公開。historical Releaseの旧assetは維持 |
+| 基盤source archive | `backlog-api-sources-*` | `miku-backlog-api-sources-*` | 新Releaseは正式assetだけを公開。historical Releaseの旧assetは維持 |
 | 環境変数 | `BACKLOG_API_*` | 変更なし | 維持 |
 | operation名 | `get_issue`など | 変更なし | 上流互換契約として維持 |
-| `product/toolset/origin` | `backlog-api` | 変更なし | 機械可読契約として維持 |
-| verbose event type | `backlog-api-access` | 変更なし | 機械可読契約として維持 |
+| `product/toolset/origin` | `backlog-api` | `miku-backlog-api` | 基盤CLI `0.7.0`で同時に移行 |
+| verbose event type | `backlog-api-access` | `miku-backlog-api-access` | 基盤CLI `0.7.0`で同時に移行 |
 | Skills GitHubリポジトリ | `igapyon/backlog-api-skills` | `igapyon/miku-backlog-api-skills` | GitHub上でin-place rename |
 | Skills package | `backlog-api-skills` | `miku-backlog-api-skills` | 変更 |
-| Skills Release ZIP | `igapyon-backlog-api-skills-*` | `igapyon-miku-backlog-api-skills-*` | 移行Releaseに旧名ZIPも併載するかG0で確定 |
-| インストールSkill名 | `igapyon-backlog-api` | 変更なし | Wave 1では維持 |
-| Skillディレクトリ | `skills/igapyon-backlog-api/` | 変更なし | Wave 1では維持 |
-| Skillトリガー | `backlog-api`系 | `miku-backlog-api`系を追加 | 新旧トリガーを併用 |
+| Skills Release ZIP | `igapyon-backlog-api-skills-*` | `igapyon-miku-backlog-api-skills-*` | 新Releaseは正式ZIPだけを公開。historical Releaseは維持 |
+| インストールSkill名 | `igapyon-backlog-api` | `igapyon-miku-backlog-api` | 新旧のproduct/repository名称をtriggerとして維持 |
+| Skillディレクトリ | `skills/igapyon-backlog-api/` | `skills/igapyon-miku-backlog-api/` | 正式Skill名と同時に移行 |
+| Skillトリガー | `backlog-api`系 | `miku-backlog-api`系を追加 | 旧 `backlog-api`、`backlog-api-skills`、`igapyon-backlog-api` を併用 |
 | runner schema | `backlog-api-skills.*` | 変更なし | schema変更は別Issue |
 | handoff保存先 | `workplace/backlog-api-skill/` | 変更なし | 保留handoffとの互換性を維持 |
 
-### 2.1 推奨する移行バージョン
+### 2.1 移行バージョンの順序
 
-- 基盤: `0.6.0`から次のminor版 `0.7.0`を候補とする。
-- Skills: `0.6.2`から次のminor版 `0.7.0`を候補とする。
-- 両者のversionは独立した契約だが、名称移行時は同じ番号を使うと追跡しやすい。
-- 最終versionはG0で人間が決定する。
+- 基盤CLIは、準備済みの `0.7.0` を先にGitHub rename後の最初のReleaseとして公開・検証する。
+- Skillsは、公開済みの基盤CLI Releaseのtag、commit、正式artifact名、SHA-256を受領してから追従する。
+- Skillsの最終versionは基盤CLI Releaseを確認した後に別途決定する。基盤と同じ番号を機械的に採用しない。
+- したがって、基盤CLI Release前にSkillsのversionを上げたり、ローカルの未公開runtimeをpinしたりしない。
 
 ### 2.2 Wave 1の対象外
 
 - `BACKLOG_API_*`環境変数のrename
 - operation名のrename
 - JSON envelopeやtrace schemaの破壊的変更
-- `product/toolset/origin`のrename
 - `backlog-api-skills.*` runner schemaのrename
 - `workplace/backlog-api-skill/`の移動
-- `igapyon-backlog-api` Skillディレクトリのrename
-- 旧CLI alias、旧トリガー、旧assetの廃止
+- 旧CLI aliasと旧triggerの廃止
+- historical Release assetまたはhistorical ZIPの変更・削除
 
 これらが必要な場合は、Wave 1完了後に別Issueと移行計画を作成する。
 
@@ -106,7 +107,7 @@ GitHubリポジトリ名、package名、Release asset名は新名称へ移行す
 
 | Gate | 承認内容 | 承認前に禁止されること |
 | --- | --- | --- |
-| G0 | 正式名称、Wave 1互換方針、version、互換Release数 | 実装開始 |
+| G0 | 正式名称、Wave 1互換方針、基盤CLI先行とSkills追従のversion順序 | Skills実装開始 |
 | G1 | 基盤rename-ready PRの内容と全検証結果 | 基盤GitHub rename、merge、Release |
 | G2 | 基盤GitHub rename直前スナップショット | 基盤GitHub rename |
 | G3 | 基盤rename後の検証と移行Release内容 | 基盤PR merge、tag、Release公開 |
@@ -121,15 +122,14 @@ GitHubリポジトリ名、package名、Release asset名は新名称へ移行す
 
 ### 5.1 G0チェックリスト
 
-- [ ] 基盤の正式名称を `miku-backlog-api` と決定した。
-- [ ] Skillsの正式名称を `miku-backlog-api-skills` と決定した。
-- [ ] Wave 1ではSkill名 `igapyon-backlog-api` を維持すると決定した。
-- [ ] Wave 1では機械可読識別子を維持すると決定した。
-- [ ] Wave 1では `BACKLOG_API_*` を維持すると決定した。
-- [ ] 基盤の移行versionを決定した。
-- [ ] Skillsの移行versionを決定した。
-- [ ] 基盤の旧名Release assetを何Release維持するか決定した。
-- [ ] Skillsの旧名ZIPを何Release維持するか決定した。
+- [x] 基盤の正式名称を `miku-backlog-api` と決定した。
+- [x] Skillsの正式名称を `miku-backlog-api-skills` と決定した。
+- [x] Wave 1でSkill名を `igapyon-miku-backlog-api` へ移行し、旧名称をtriggerとして維持すると決定した。
+- [x] 基盤CLIの機械可読識別子は `miku-backlog-api` へ同時に移行すると決定した。
+- [x] Wave 1では `BACKLOG_API_*` とoperation名を維持すると決定した。
+- [x] 基盤CLI `0.7.0` のReleaseを先行し、そのReleaseをSkillsが追従する順序を決定した。
+- [ ] Skillsの移行versionを、基盤CLI Releaseの確認後に決定する。
+- [x] 新Releaseへ旧名asset/ZIPを複製せず、historical Releaseは変更しないと決定した。
 - [ ] GitHub rename実施者と実施時間帯を決定した。
 - [ ] Issue #21を基盤側の決定元、Issue #25をSkills側の追随先と確認した。
 
@@ -138,12 +138,17 @@ GitHubリポジトリ名、package名、Release asset名は新名称へ移行す
 ```text
 承認日時:
 承認者:
-基盤version:
-Skills version:
-旧名asset互換Release数:
-旧名ZIP互換Release数:
+基盤CLI Release: v0.7.0（公開・検証待ち）
+Skills version: 基盤CLI Release確認後に決定
+旧名asset / ZIP: 新Releaseへ複製しない。historical Releaseは変更しない。
 補足:
 ```
+
+### 5.3 記録済みの順序決定
+
+2026-08-04に、SkillsはCLI側のversion upgradeとRelease公開を先行させ、
+公開済みartifactへ追従する方針を記録した。ローカルの未公開CLI bundleを
+Skillsへ取り込まない。この方針はSkillsのversion番号を事前に固定しない。
 
 ## 6. Phase 1: 改名前監査
 
@@ -252,6 +257,26 @@ Agentは`gh`を直接実行しない。
 - [ ] Wave 1でschemaと保存先を変更しないことを再確認した。
 - [ ] credentialやBacklog API keyを読み取っていない。
 
+### 6.6 2026-08-04 ローカル監査記録
+
+この記録はREADONLY監査の結果であり、GitHub rename、merge、tag、Release、
+runtime importを承認しない。
+
+| 対象 | 確認結果 | 実装上の意味 |
+| --- | --- | --- |
+| Skills repository | `devel-tiga0804jef`、`07966b76a17182d125dce374c963a85e3c5e9a50`、`origin/devel`、ahead/behind `0/0`、clean | Phase 4を始める専用branchは基盤Release後に別途作成する。現branchへ実装を混在させない |
+| 基盤CLI repository | `devel-tiga0731xdf`、`6502cda393443aaa7790dfe550e39f1583b7fb40`、upstreamとのahead/behind `0/0`、clean | `miku-backlog-api` `0.7.0` の準備branch。default branchへのmerge、GitHub rename、Releaseは未確認・未実施 |
+| 基盤CLIの準備内容 | package、canonical CLI、bundle、`product/toolset/origin`、verbose event typeが `miku-backlog-api` へ移行済み。`backlog-api` CLI aliasは `0.7.x` で維持 | Skillsは公開済み `miku-backlog-api-*` artifactを取り込み、旧artifactはhistorical Release専用として解決する |
+| Skillsのrename対象 | package/package-lock、bundle scripts、release workflow、README/docs、runtime import/sync/source record、runtime references、Skill directory/frontmatter/agent metadata、index、tests | display/package/runtime/provenance/installed Skillを一つの変更として扱う。runner schemaとhandoff pathは維持する |
+| Skillsの現行互換契約 | `igapyon-backlog-api` directory/name、`backlog-api-skills.*` schema、`workplace/backlog-api-skill/delete-handoffs/`、`BACKLOG_API_*`、operation名 | Skill directory/nameだけはWave 1で移行し、旧product/repository名称はtriggerとして残す。他の列挙契約は変更しない |
+| local handoff | `workplace/backlog-api-skill/delete-handoffs/` は存在しなかった。内容・credentialは読み取っていない | schema/path migrationは不要。ただし実装直前に再確認する |
+
+SkillsリポジトリのCIには `uses: igapyon/...` 形式の参照は見つからず、
+release workflowはbundle ZIP名とruntime source-record pathを直接参照している。
+ただし、他リポジトリからのAction/reusable workflow利用、GitHub Settings、
+Pages、Packages、webhook、secrets、Open PR/Issue、Release一覧はこのローカル監査の
+対象外である。G2/G5の直前に、GitHub管理者がWeb UIで確認して記録する。
+
 ## 7. Phase 2: 基盤rename-ready実装
 
 対象: `igapyon/backlog-api`
@@ -272,13 +297,7 @@ bundle/miku-backlog-api-runtime.mjs
 bundle/miku-backlog-api-sources.tgz
 ```
 
-- [ ] 移行Release用の旧名assetも生成した。
-
-```text
-backlog-api-<version>.mjs
-backlog-api-runtime-<version>.mjs
-backlog-api-sources-<version>.tgz
-```
+- [ ] 新Releaseには正式assetだけを生成し、旧名assetは複製していない。
 
 - [ ] GitHub Actionsのrelease asset名を更新した。
 - [ ] READMEのproject名、CLI例、成果物名を更新した。
@@ -287,17 +306,17 @@ backlog-api-sources-<version>.tgz
 - [ ] Skills側URLはSkills GitHub rename完了まで旧URLを維持した。
 - [ ] generated traceabilityを正規コマンドで再生成した。
 
-### 7.2 Wave 1で変更しないもの
+### 7.2 基盤CLIで保つ契約と移行する契約
 
 - [ ] `BACKLOG_API_*`を変更していない。
 - [ ] operation名を変更していない。
-- [ ] `product.name`など機械可読な`backlog-api`識別子を変更していない。
-- [ ] `toolset`と`origin`を変更していない。
-- [ ] `backlog-api-access` event typeを変更していない。
+- [ ] `product.name`などの基盤CLI機械可読識別子を`miku-backlog-api`へ移行した。
+- [ ] `toolset`と`origin`を`miku-backlog-api`へ移行した。
+- [ ] verbose event typeを`miku-backlog-api-access`へ移行した。
 - [ ] JSON envelope schemaを変更していない。
 
-正式表示名と機械可読識別子を分ける実装が必要な場合は、既存識別子を
-上書きせずdisplay nameまたはrepository metadataを追加する。
+Skillsのrunner schemaおよびhandoff schemaは基盤CLIの識別子と別契約であり、
+このPhaseでは変更しない。
 
 ### 7.3 基盤テスト
 
@@ -315,7 +334,7 @@ npm run smoke:node
 - [ ] 旧CLI aliasで`--help`が成功した。
 - [ ] 新旧CLIが同じversionと操作カタログを返した。
 - [ ] 新正式bundleが生成された。
-- [ ] 移行用旧名assetが生成された。
+- [ ] 新Releaseのasset一覧に旧名assetが含まれない。
 - [ ] source archiveへ秘密情報や`workplace/`が混入していない。
 - [ ] 全テストが成功した。
 - [ ] final diffに無関係な変更がない。
@@ -436,7 +455,7 @@ Phase 3の基盤Releaseが公開・検証済みになるまで開始しない。
 igapyon-miku-backlog-api-skills-<version>.zip
 ```
 
-- [ ] G0の決定に従い、移行用旧名ZIPを生成した。
+- [ ] 新Releaseには正式ZIPだけを生成し、旧名ZIPを複製していない。
 - [ ] `.github/workflows/release-build.yml`のasset名を更新した。
 - [ ] CIのNode.js 22/24契約を維持した。
 
@@ -445,12 +464,12 @@ igapyon-miku-backlog-api-skills-<version>.zip
 - [ ] import scriptが`miku-backlog-api-<version>.mjs`を受け付ける。
 - [ ] sync scriptが`miku-backlog-api` packageを検証する。
 - [ ] sync scriptが新しいsister directory名を解決する。
-- [ ] runtime resolverが新正式artifactを選択する。
-- [ ] 移行期間に旧artifactが存在しても選択結果が決定的である。
+- [ ] runtime resolverがnew-name Releaseの正式artifactを選択する。
+- [ ] runtime resolverがhistorical Releaseの`backlog-api-*`とnew-name Releaseの`miku-backlog-api-*`を意図的かつ決定的に扱う。
 - [ ] source recordのファイル役割を維持した。
 - [ ] 新基盤Releaseの正式assetを取り込んだ。
 - [ ] source recordへ新GitHub URL、tag、commit、asset URL、SHA-256を記録した。
-- [ ] 既存Releaseとhistorical source recordを書き換えていない。
+- [ ] 公開済みRelease、asset、checksumを変更していない。現行source recordは公開済みの新runtimeだけを記録する。
 
 実行例。値はPhase 3の確定値を使用する。
 
@@ -465,12 +484,12 @@ npm run import:runtime:release -- \
 
 ### 9.3 Skill契約
 
-- [ ] `skills/igapyon-backlog-api/`をrenameしていない。
-- [ ] `SKILL.md` frontmatterの`name: igapyon-backlog-api`を維持した。
-- [ ] `agents/openai.yaml`のSkill名を維持した。
+- [ ] `skills/igapyon-backlog-api/`を`skills/igapyon-miku-backlog-api/`へrenameした。
+- [ ] `SKILL.md` frontmatterの`name`を`igapyon-miku-backlog-api`へ変更した。
+- [ ] `agents/openai.yaml`のSkill名を`igapyon-miku-backlog-api`へ変更した。
 - [ ] `miku-backlog-api`トリガーを追加した。
 - [ ] `miku-backlog-api-skills`トリガーを追加した。
-- [ ] `igapyon-miku-backlog-api`を将来名候補として追加するかG0の決定に従った。
+- [ ] `igapyon-miku-backlog-api` triggerを正式名として追加した。
 - [ ] 旧`igapyon-backlog-api`トリガーを維持した。
 - [ ] 旧`backlog-api`トリガーを維持した。
 - [ ] 旧`backlog-api-skills`トリガーを維持した。
@@ -498,7 +517,7 @@ npm run import:runtime:release -- \
 - [ ] generated indexを正規手順で再生成した。
 
 ```bash
-miku-indexgen --refresh-index skills/igapyon-backlog-api/index.json
+miku-indexgen --refresh-index skills/igapyon-miku-backlog-api/index.json
 ```
 
 ### 9.6 Skillsテスト
@@ -516,7 +535,7 @@ npm run build:bundle:zip
 - [ ] release bundle contents testが新正式ZIPを確認した。
 - [ ] isolated bundle smokeがinstall後のruntimeを実行した。
 - [ ] 新正式ZIPに必要なSkillファイルとruntimeが含まれる。
-- [ ] 旧互換ZIPを生成する場合、内容が正式ZIPと同等である。
+- [ ] 新Releaseに旧名ZIPを複製していない。
 - [ ] `tests/`、`workplace/`、`.DS_Store`、秘密情報がZIPへ入っていない。
 - [ ] final diffに無関係な変更がない。
 
@@ -600,7 +619,7 @@ G5のrename後確認と、PR check成功を人間がレビューしてから実�
 - [ ] 正式versionのtagをGitHub Release画面で作成または選択した。
 - [ ] Releaseを公開した。
 - [ ] 新正式ZIPを確認した。
-- [ ] G0で決めた旧互換ZIPを確認した。
+- [ ] 新Releaseに旧名ZIPを複製していない。
 - [ ] ZIPのchecksumを確認した。
 - [ ] 新URLからZIPをdownloadできる。
 - [ ] 旧Release URLのredirectを確認した。
@@ -644,7 +663,7 @@ GitHub Pagesのproject site URLとAction/reusable workflow参照には例外が�
 - [ ] 新CLIが成功する。
 - [ ] 旧CLI aliasが成功する。
 - [ ] 新正式assetが公開されている。
-- [ ] G0で決めた旧互換assetが公開されている。
+- [ ] 新Releaseに旧名assetを複製していない。
 - [ ] checksumが一致する。
 - [ ] CI、typecheck、trace、test、smokeが成功している。
 
@@ -652,11 +671,11 @@ GitHub Pagesのproject site URLとAction/reusable workflow参照には例外が�
 
 - [ ] canonical GitHub URLが`igapyon/miku-backlog-api-skills`である。
 - [ ] package名が`miku-backlog-api-skills`である。
-- [ ] installed Skill名が`igapyon-backlog-api`のままである。
+- [ ] installed Skill名が`igapyon-miku-backlog-api`である。
 - [ ] 新旧triggerが同じSkillをactivateする。
 - [ ] runtime source recordが新基盤Releaseを指す。
 - [ ] 新正式ZIPが公開されている。
-- [ ] G0で決めた旧互換ZIPが公開されている。
+- [ ] 新Releaseに旧名ZIPを複製していない。
 - [ ] CI、test、runtime smoke、bundle、isolated smokeが成功している。
 
 ### 12.3 GitHubと外部連携
@@ -733,11 +752,8 @@ Issueへのcomment、本文更新、closeはそれぞれ別のmiku-scm承認work
 
 Wave 1完了後、必要性を評価して別Issue化する。
 
-- `igapyon-backlog-api`から`igapyon-miku-backlog-api`へのSkill名変更
-- Skillディレクトリ移動と旧インストール削除手順
 - runner/schema IDのversion付きrename
 - handoff保存先と既存handoff migration
-- `product/toolset/origin`など機械可読識別子のrename
 - `BACKLOG_API_*`環境変数aliasと廃止計画
 - 旧CLI aliasの廃止
 - 旧Release asset名と旧ZIP名の廃止
