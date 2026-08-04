@@ -39,7 +39,7 @@ jobs:
       - name: Verify bundled runtime
         run: |
           npm run smoke:runtime
-          node -e "const s=require('./skills/igapyon-backlog-api/runtime/backlog-api-source.json'); if (s.source.dirty) throw new Error('release runtime must come from a clean backlog-api commit')"
+          node -e "const s=require('./skills/igapyon-miku-backlog-api/runtime/miku-backlog-api-source.json'); if (s.source.dirty) throw new Error('release runtime must come from a clean miku-backlog-api commit')"
 
       - name: Verify release tag version
         id: release_version
@@ -65,8 +65,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          source_zip="bundle/igapyon-backlog-api-skills-${{ steps.release_version.outputs.package_version }}.zip"
-          target_zip="release-assets/igapyon-backlog-api-skills-${{ steps.release_version.outputs.version }}.zip"
+          source_zip="bundle/igapyon-miku-backlog-api-skills-${{ steps.release_version.outputs.package_version }}.zip"
+          target_zip="release-assets/igapyon-miku-backlog-api-skills-${{ steps.release_version.outputs.version }}.zip"
           if [[ ! -s "${source_zip}" ]]; then
             echo "release zip not found or empty: ${source_zip}" >&2
             exit 1

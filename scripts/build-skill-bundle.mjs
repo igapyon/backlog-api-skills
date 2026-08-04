@@ -8,8 +8,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, "..");
 
-const repoName = "backlog-api-skills";
-const skillName = "igapyon-backlog-api";
+const repoName = "miku-backlog-api-skills";
+const skillName = "igapyon-miku-backlog-api";
 const bundleRoot = path.resolve(repoRoot, "bundle", repoName);
 const sourceSkillRoot = path.resolve(repoRoot, "skills", skillName);
 const bundleSkillRoot = path.resolve(bundleRoot, "skills", skillName);

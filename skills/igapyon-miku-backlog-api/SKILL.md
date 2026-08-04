@@ -1,19 +1,19 @@
 ---
-name: igapyon-backlog-api
-description: Beta. Use only when the user explicitly names `igapyon-backlog-api`, `backlog-api`, or `backlog-api-skills`, explicitly asks to apply this skill for Nulab Backlog API workflows, or explicitly asks how to issue or configure a Backlog API key for this Skill. This skill provides guidance-only API-key setup and runs the bundled backlog-api Node CLI converted from Nulab Backlog MCP Server tool handlers. It includes common fixed Issue search and single-Issue deletion routes, and never issues or receives API key values. Do not activate for generic backlog grooming, task management, GitHub, or project-management requests.
+name: igapyon-miku-backlog-api
+description: Beta. Use only when the user explicitly names `igapyon-miku-backlog-api`, `miku-backlog-api`, `miku-backlog-api-skills`, or the compatibility triggers `igapyon-backlog-api`, `backlog-api`, or `backlog-api-skills`, explicitly asks to apply this skill for Nulab Backlog API workflows, or explicitly asks how to issue or configure a Backlog API key for this Skill. This skill provides guidance-only API-key setup and runs the bundled miku-backlog-api Node CLI converted from Nulab Backlog MCP Server tool handlers. It includes common fixed Issue search and single-Issue deletion routes, and never issues or receives API key values. Do not activate for generic backlog grooming, task management, GitHub, or project-management requests.
 ---
 
-# Backlog API
+# Miku Backlog API
 
 This Agent Skill is beta. Keep product versions numeric; do not add a beta
 suffix to the version number.
 
-Use this skill to operate Nulab Backlog through the bundled `backlog-api` Node
+Use this skill to operate Nulab Backlog through the bundled `miku-backlog-api` Node
 runtime. The runtime is a traceable CLI conversion of the published Nulab
 Backlog MCP Server tool handlers; it does not start or communicate through an
 MCP transport.
 
-The Node Core/CLI is maintained in `https://github.com/igapyon/backlog-api`.
+The Node Core/CLI is maintained in `https://github.com/igapyon/miku-backlog-api`.
 This Skill consumes a versioned, checksummed runtime from that repository.
 
 ## Activation
@@ -23,6 +23,9 @@ Start this skill only when at least one of these explicit triggers is present:
 - the user names `igapyon-backlog-api`
 - the user names `backlog-api`
 - the user names `backlog-api-skills`
+- the user names `igapyon-miku-backlog-api`
+- the user names `miku-backlog-api`
+- the user names `miku-backlog-api-skills`
 - the user explicitly asks to use this skill for a Backlog API workflow
 - the user explicitly asks how to issue or configure a Backlog API key for this
   Skill
@@ -133,9 +136,9 @@ than adding a separate MJS runner.
 ## Required First Checks for Other Runtime Operations
 
 1. Read [index.json](index.json) first as the generated discovery index.
-2. Read `runtime/backlog-api-source.json` when source identity matters.
+2. Read `runtime/miku-backlog-api-source.json` when source identity matters.
 3. Open only the references needed for the current request.
-4. Locate the newest `runtime/backlog-api-*.mjs` before searching elsewhere.
+4. Locate the runtime file named by the source record before searching elsewhere.
 5. Run `node <runtime> tools list` when current operation discovery is needed.
 6. Run `node <runtime> tools describe <operation>` before constructing input.
 7. Resolve the target Backlog organization and resource before mutation.
@@ -153,7 +156,7 @@ upstream checkout under `workplace/`.
 
 This skill is `cli-only`.
 
-- use only the bundled `backlog-api` Node runtime
+- use only the bundled `miku-backlog-api` Node runtime
 - do not probe MCP tools as an automatic fallback
 - do not call the Backlog REST API directly from the skill layer
 - do not read credentials from dotfiles or print environment values

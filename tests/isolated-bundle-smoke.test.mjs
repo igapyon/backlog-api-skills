@@ -6,8 +6,8 @@ import { execFileSync } from "node:child_process";
 import test from "node:test";
 
 const ROOT = process.cwd();
-const repoName = "backlog-api-skills";
-const skillName = "igapyon-backlog-api";
+const repoName = "miku-backlog-api-skills";
+const skillName = "igapyon-miku-backlog-api";
 
 test("generated Skill bundle runs from an isolated install shape", () => {
   execFileSync("npm", ["run", "build:bundle"], {
@@ -22,7 +22,7 @@ test("generated Skill bundle runs from an isolated install shape", () => {
     fs.cpSync(sourceBundle, isolatedRoot, { recursive: true });
     const installedSkillRoot = path.resolve(isolatedRoot, "skills", skillName);
     const runtimeSource = JSON.parse(
-      fs.readFileSync(path.resolve(installedSkillRoot, "runtime", "backlog-api-source.json"), "utf8")
+      fs.readFileSync(path.resolve(installedSkillRoot, "runtime", "miku-backlog-api-source.json"), "utf8")
     );
     const runtime = path.resolve(installedSkillRoot, "runtime", runtimeSource.artifact.file);
     const runner = path.resolve(installedSkillRoot, "scripts", "backlog-api-skill-run.mjs");
@@ -36,7 +36,7 @@ test("generated Skill bundle runs from an isolated install shape", () => {
     );
     assert.equal(fs.existsSync(runtime), true);
     assert.equal(
-      fs.existsSync(path.resolve(installedSkillRoot, "runtime", "backlog-api-source.json")),
+      fs.existsSync(path.resolve(installedSkillRoot, "runtime", "miku-backlog-api-source.json")),
       true
     );
     assert.equal(fs.existsSync(path.resolve(installedSkillRoot, "vendor")), false);

@@ -1,20 +1,20 @@
-# backlog-api-skills
+# miku-backlog-api-skills
 
-`backlog-api-skills` provides an installable Agent Skill for operating Nulab
-Backlog through the bundled `backlog-api` Node CLI runtime.
+`miku-backlog-api-skills` provides an installable Agent Skill for operating Nulab
+Backlog through the bundled `miku-backlog-api` Node CLI runtime.
 
 This product is currently beta. Its version remains a numeric Semantic Version
-such as `0.6.2`; beta status is not encoded in the version number.
+such as `0.7.0`; beta status is not encoded in the version number.
 
 The Backlog MCP-equivalent Node Core/CLI is maintained separately in the sister
-[`backlog-api`](https://github.com/igapyon/backlog-api) repository. This
+[`miku-backlog-api`](https://github.com/igapyon/miku-backlog-api) repository. This
 repository adds explicit activation, user-facing safety policy, working-context
 guidance, and Agent-oriented workflows around a pinned Node runtime.
 
 ## Repository Boundary
 
 ```text
-skills/igapyon-backlog-api/      Agent Skill, references, notices, and runtime
+skills/igapyon-miku-backlog-api/ Agent Skill, references, notices, and runtime
 scripts/                         Skill bundle and runtime synchronization tools
 tests/                           Skill contract, provenance, and bundle tests
 docs/                            Skill development and product reference notes
@@ -27,13 +27,14 @@ release artifacts belong to `backlog-api`, not this repository.
 ## Agent Skill
 
 - maturity: beta
-- installed name: `igapyon-backlog-api`
-- explicit triggers: `igapyon-backlog-api`, `backlog-api`, or
-  `backlog-api-skills`
+- installed name: `igapyon-miku-backlog-api`
+- explicit triggers: `igapyon-miku-backlog-api`, `miku-backlog-api`, or
+  `miku-backlog-api-skills`; compatibility triggers: `igapyon-backlog-api`,
+  `backlog-api`, or `backlog-api-skills`
 - backend policy: CLI only
-- Skill version: `0.6.2`
-- bundled runtime: `runtime/backlog-api-0.6.0.mjs`
-- runtime source record: `runtime/backlog-api-source.json`
+- Skill version: `0.7.0`
+- bundled runtime: `runtime/miku-backlog-api-0.7.0.mjs`
+- runtime source record: `runtime/miku-backlog-api-source.json`
 
 Generic mentions of Backlog, issues, projects, wikis, or pull requests do not
 activate the Skill by themselves.
@@ -85,7 +86,7 @@ Start preflight from the same agent workspace that owns the ignored
 
 ```bash
 node --env-file=<agent-workspace>/workplace/backlog.env \
-  skills/igapyon-backlog-api/scripts/backlog-api-skill-run.mjs \
+  skills/igapyon-miku-backlog-api/scripts/backlog-api-skill-run.mjs \
   --format human issue.delete.preflight --issue-key PROJ-123
 ```
 
@@ -95,7 +96,7 @@ organization, or delete flags:
 
 ```bash
 node --env-file=<agent-workspace>/workplace/backlog.env \
-  skills/igapyon-backlog-api/scripts/backlog-api-skill-run.mjs \
+  skills/igapyon-miku-backlog-api/scripts/backlog-api-skill-run.mjs \
   --format human issue.delete.handoff.apply --apply
 ```
 
@@ -116,7 +117,7 @@ result contains only issue key, status, summary, and relevant timestamp.
 
 ```bash
 node --env-file=<agent-workspace>/workplace/backlog.env \
-  skills/igapyon-backlog-api/scripts/backlog-api-skill-run.mjs \
+  skills/igapyon-miku-backlog-api/scripts/backlog-api-skill-run.mjs \
   --format human issue.search --project MIGTEST01 --incomplete \
   --keyword migration --assignee me --updated-within-days 7
 ```
@@ -195,7 +196,7 @@ explicitly when running the bundled runtime:
 
 ```bash
 printf '{}\n' | node --env-file=<agent-workspace>/workplace/backlog.env \
-  skills/igapyon-backlog-api/runtime/backlog-api-0.6.0.mjs \
+  skills/igapyon-miku-backlog-api/runtime/miku-backlog-api-0.7.0.mjs \
   call get_space --input - --verbose
 ```
 
@@ -213,7 +214,7 @@ npm run build:bundle:zip
 
 Generated output:
 
-- `bundle/igapyon-backlog-api-skills-<version>.zip`
+- `bundle/igapyon-miku-backlog-api-skills-<version>.zip`
 
 ## Refresh the Node Runtime
 
@@ -223,28 +224,28 @@ checksum, then import the asset with its exact Release tag and commit:
 
 ```bash
 npm run import:runtime:release -- \
-  --version 0.6.0 \
-  --tag v0.6.0 \
-  --commit 1535fa15a244a8eab992209a783e0bc7e0c9613d \
-  --artifact /path/to/backlog-api-0.6.0.mjs \
-  --expected-sha256 f43ad0a8d1a9f74916aef64a20463b0c2e3e55486546ebde8b9f39db100a18f3
+  --version 0.7.0 \
+  --tag v0.7.0 \
+  --commit 2ee5cd26cd412906b771987e1491618d137ab993 \
+  --artifact /path/to/miku-backlog-api-0.7.0.mjs \
+  --expected-sha256 30ab58105b5c06c5b15fc932e1a4fe8b790c0d8cf32f57f0e10f51a76d31d872
 ```
 
 The import validates the asset checksum and reported version, then records the
 source repository, version, Release tag, Git commit, Release URL, asset URL,
 SHA-256, and upstream anchor in
-`skills/igapyon-backlog-api/runtime/backlog-api-source.json`.
+`skills/igapyon-miku-backlog-api/runtime/miku-backlog-api-source.json`.
 
 `npm run sync:runtime` remains available for local development builds from the
 sister checkout, but a distributable Skill release should use the published
 Release asset. After changing bundled Skill files, regenerate
-`skills/igapyon-backlog-api/index.json` with `miku-indexgen --refresh-index`.
+`skills/igapyon-miku-backlog-api/index.json` with `miku-indexgen --refresh-index`.
 
 ## Install
 
 Build the Skill zip, extract it, and copy its top-level `skills/` directory into
 the target agent's skill root. The installed path is
-`skills/igapyon-backlog-api/`.
+`skills/igapyon-miku-backlog-api/`.
 
 ## License
 

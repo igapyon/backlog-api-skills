@@ -6,9 +6,9 @@ import { spawnSync } from "node:child_process";
 import test from "node:test";
 
 const ROOT = process.cwd();
-const runtimeDir = path.resolve(ROOT, "skills", "igapyon-backlog-api", "runtime");
+const runtimeDir = path.resolve(ROOT, "skills", "igapyon-miku-backlog-api", "runtime");
 const source = JSON.parse(
-  fs.readFileSync(path.resolve(runtimeDir, "backlog-api-source.json"), "utf8")
+  fs.readFileSync(path.resolve(runtimeDir, "miku-backlog-api-source.json"), "utf8")
 );
 const runtime = path.resolve(runtimeDir, source.artifact.file);
 const credentials = {
@@ -34,20 +34,23 @@ function firstDiagnosticCode(execution) {
   return JSON.parse(execution.stdout).diagnostics?.[0]?.code;
 }
 
-test("bundled runtime matches the pinned backlog-api source record", () => {
+test("bundled runtime matches the pinned miku-backlog-api source record", () => {
   const packageJson = JSON.parse(fs.readFileSync(path.resolve(ROOT, "package.json"), "utf8"));
   const sha256 = crypto.createHash("sha256").update(fs.readFileSync(runtime)).digest("hex");
 
   assert.match(packageJson.version, /^\d+\.\d+\.\d+$/);
-  assert.equal(source.source.repository, "https://github.com/igapyon/backlog-api");
+  assert.equal(source.source.repository, "https://github.com/igapyon/miku-backlog-api");
+  assert.equal(source.source.version, "0.7.0");
   assert.equal(source.source.tag, `v${source.source.version}`);
+  assert.equal(source.source.commit, "2ee5cd26cd412906b771987e1491618d137ab993");
   assert.equal(source.source.dirty, false);
   assert.equal(source.artifact.origin, "github-release-asset");
-  assert.equal(source.artifact.file, `backlog-api-${source.source.version}.mjs`);
+  assert.equal(source.artifact.file, `miku-backlog-api-${source.source.version}.mjs`);
+  assert.equal(source.artifact.sha256, "30ab58105b5c06c5b15fc932e1a4fe8b790c0d8cf32f57f0e10f51a76d31d872");
   assert.equal(source.artifact.sha256, sha256);
   assert.equal(
     source.artifact.url,
-    `https://github.com/igapyon/backlog-api/releases/download/${source.source.tag}/${source.artifact.file}`
+    `https://github.com/igapyon/miku-backlog-api/releases/download/${source.source.tag}/${source.artifact.file}`
   );
   assert.match(source.source.commit, /^[0-9a-f]{40}$/);
 

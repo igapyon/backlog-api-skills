@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "repository": "https://github.com/igapyon/miku-backlog-api",
+    "version": "0.7.0",
+    "tag": "v0.7.0",
+    "commit": "2ee5cd26cd412906b771987e1491618d137ab993",
+    "release": "https://github.com/igapyon/miku-backlog-api/releases/tag/v0.7.0",
+    "dirty": false
+  },
+  "artifact": {
+    "origin": "github-release-asset",
+    "file": "miku-backlog-api-0.7.0.mjs",
+    "url": "https://github.com/igapyon/miku-backlog-api/releases/download/v0.7.0/miku-backlog-api-0.7.0.mjs",
+    "sha256": "30ab58105b5c06c5b15fc932e1a4fe8b790c0d8cf32f57f0e10f51a76d31d872",
+    "checksumFile": "https://github.com/igapyon/miku-backlog-api/releases/download/v0.7.0/SHA256SUMS"
+  },
+  "upstream": {
+    "repository": "https://github.com/nulab/backlog-mcp-server",
+    "version": "0.14.0",
+    "tag": "v0.14.0",
+    "commit": "9da42fcfb5b69f1455e3864c49f2b57a45a4cbe9"
+  }
+}

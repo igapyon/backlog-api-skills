@@ -8,13 +8,13 @@ import {
   BacklogSkillRunnerError,
   parseRunnerCliArgs,
   runWorkflow
-} from "../skills/igapyon-backlog-api/scripts/backlog-api-skill-run.mjs";
-import { WORKFLOW_MANIFEST } from "../skills/igapyon-backlog-api/scripts/backlog-api-workflow-manifest.mjs";
+} from "../skills/igapyon-miku-backlog-api/scripts/backlog-api-skill-run.mjs";
+import { WORKFLOW_MANIFEST } from "../skills/igapyon-miku-backlog-api/scripts/backlog-api-workflow-manifest.mjs";
 
 const RUNTIME = {
-  path: "/fake/backlog-api.mjs",
-  file: "backlog-api-0.6.0.mjs",
-  sourceVersion: "0.6.0",
+  path: "/fake/miku-backlog-api.mjs",
+  file: "miku-backlog-api-0.7.0.mjs",
+  sourceVersion: "0.7.0",
   sha256: "a".repeat(64)
 };
 const ENVIRONMENT = { BACKLOG_API_ALLOWED_PERMISSIONS: "READ,DELETE" };

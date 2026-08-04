@@ -4,10 +4,10 @@
 
 | 項目 | 値 |
 | --- | --- |
-| 状態 | Draft / 未実施 |
+| 状態 | Phase 4 実装・ローカル検証完了 / Skills GitHub rename未実施 |
 | 作成日 | 2026-08-04 |
-| 対象Issue | [`backlog-api` #21](https://github.com/igapyon/backlog-api/issues/21)、[`backlog-api-skills` #25](https://github.com/igapyon/backlog-api-skills/issues/25) |
-| 基盤リポジトリ | `igapyon/backlog-api` |
+| 対象Issue | [`miku-backlog-api` #21](https://github.com/igapyon/miku-backlog-api/issues/21)、[`backlog-api-skills` #25](https://github.com/igapyon/backlog-api-skills/issues/25) |
+| 基盤リポジトリ | `igapyon/miku-backlog-api` |
 | Skillsリポジトリ | `igapyon/backlog-api-skills` |
 | 目的 | miku-softの命名規則に合わせ、基盤とAgent Skillsを安全に段階移行する |
 
@@ -34,9 +34,9 @@ GitHubリポジトリ名、package名、Release asset名は新名称へ移行す
 
 ## 2. 対象名称とWave 1の互換方針
 
-以下は、基盤CLIの名称変更準備ブランチ（`miku-backlog-api` `0.7.0`）で
-確認した方針と整合させたWave 1の基準である。基盤Releaseが未公開のため、
-Skillsの実装開始とSkillsの最終version決定は、その公開・検証後まで行わない。
+以下は、基盤CLI `miku-backlog-api` `v0.7.0` の公開Releaseで確認した方針と
+整合させたWave 1の基準である。基盤のGitHub rename、PR merge、Release公開、
+正式artifactとchecksumの検証は完了し、Skillsはこの公開済みruntimeへ追従する。
 
 | 契約 | 現在 | Wave 1の正式名称 | Wave 1の互換方針 |
 | --- | --- | --- | --- |
@@ -60,10 +60,10 @@ Skillsの実装開始とSkillsの最終version決定は、その公開・検証�
 
 ### 2.1 移行バージョンの順序
 
-- 基盤CLIは、準備済みの `0.7.0` を先にGitHub rename後の最初のReleaseとして公開・検証する。
-- Skillsは、公開済みの基盤CLI Releaseのtag、commit、正式artifact名、SHA-256を受領してから追従する。
-- Skillsの最終versionは基盤CLI Releaseを確認した後に別途決定する。基盤と同じ番号を機械的に採用しない。
-- したがって、基盤CLI Release前にSkillsのversionを上げたり、ローカルの未公開runtimeをpinしたりしない。
+- 基盤CLI `v0.7.0` はGitHub rename後の最初のReleaseとして公開・検証済みである。
+- Skillsは、公開済みの基盤CLI Releaseのtag、commit、正式artifact名、SHA-256を受領して追従する。
+- Skillsは、package名とインストールSkill名の公開契約が変わるため、`0.7.0` へminor incrementする。
+- Skillsは未公開CLI bundleをpinせず、公開済みの `miku-backlog-api` Releaseだけを取り込む。
 
 ### 2.2 Wave 1の対象外
 
@@ -128,7 +128,7 @@ Skillsの実装開始とSkillsの最終version決定は、その公開・検証�
 - [x] 基盤CLIの機械可読識別子は `miku-backlog-api` へ同時に移行すると決定した。
 - [x] Wave 1では `BACKLOG_API_*` とoperation名を維持すると決定した。
 - [x] 基盤CLI `0.7.0` のReleaseを先行し、そのReleaseをSkillsが追従する順序を決定した。
-- [ ] Skillsの移行versionを、基盤CLI Releaseの確認後に決定する。
+- [x] Skillsの移行versionを、基盤CLI Releaseの確認後に `0.7.0` と決定した。
 - [x] 新Releaseへ旧名asset/ZIPを複製せず、historical Releaseは変更しないと決定した。
 - [ ] GitHub rename実施者と実施時間帯を決定した。
 - [ ] Issue #21を基盤側の決定元、Issue #25をSkills側の追随先と確認した。
@@ -138,8 +138,8 @@ Skillsの実装開始とSkillsの最終version決定は、その公開・検証�
 ```text
 承認日時:
 承認者:
-基盤CLI Release: v0.7.0（公開・検証待ち）
-Skills version: 基盤CLI Release確認後に決定
+基盤CLI Release: v0.7.0（公開・検証済み）
+Skills version: 0.7.0
 旧名asset / ZIP: 新Releaseへ複製しない。historical Releaseは変更しない。
 補足:
 ```
@@ -414,28 +414,28 @@ remote更新はローカルGit設定の変更なので、G2の明示承認後だ
 
 G3承認後に人間が実行する。
 
-- [ ] rename-ready PRをmergeした。
-- [ ] merge commitを記録した。
-- [ ] 正式versionのtagをGitHub Release画面で作成または選択した。
-- [ ] Releaseを公開した。
-- [ ] 新正式assetを確認した。
-- [ ] 旧互換assetを確認した。
-- [ ] `SHA256SUMS`と各assetのchecksumを確認した。
-- [ ] 新URLからassetをdownloadできる。
-- [ ] 旧Release URLのredirectを確認した。
+- [x] rename-ready PRをmergeした。
+- [x] merge commitを記録した。
+- [x] 正式versionのtagをGitHub Release画面で作成または選択した。
+- [x] Releaseを公開した。
+- [x] 新正式assetを確認した。
+- [x] 旧互換assetを確認した。
+- [x] `SHA256SUMS`と各assetのchecksumを確認した。
+- [x] 新URLからassetをdownloadできる。
+- [x] 旧Release URLのredirectを確認した。
 
 記録:
 
 ```text
-rename日時:
-実施者:
-旧URL:
-新URL:
-merge commit:
-tag:
-Release URL:
-asset一覧:
-checksum確認結果:
+rename日時: 2026-08-04（GitHub上の公開状態で確認）
+実施者: 人間（GitHub管理操作）
+旧URL: https://github.com/igapyon/backlog-api
+新URL: https://github.com/igapyon/miku-backlog-api
+merge commit: 2ee5cd26cd412906b771987e1491618d137ab993
+tag: v0.7.0
+Release URL: https://github.com/igapyon/miku-backlog-api/releases/tag/v0.7.0
+asset一覧: miku-backlog-api-0.7.0.mjs、miku-backlog-api-runtime-0.7.0.mjs、source archive、SHA256SUMS
+checksum確認結果: miku-backlog-api-0.7.0.mjs = 30ab58105b5c06c5b15fc932e1a4fe8b790c0d8cf32f57f0e10f51a76d31d872
 ```
 
 ## 9. Phase 4: Skills rename-ready実装
@@ -446,30 +446,30 @@ Phase 3の基盤Releaseが公開・検証済みになるまで開始しない。
 
 ### 9.1 package、bundle、GitHub Actions
 
-- [ ] `package.json`の`name`を`miku-backlog-api-skills`へ変更した。
-- [ ] `package-lock.json`を通常のnpm操作で同期した。
-- [ ] bundle rootのrepo名を`miku-backlog-api-skills`へ変更した。
-- [ ] 正式ZIP名を次へ変更した。
+- [x] `package.json`の`name`を`miku-backlog-api-skills`へ変更した。
+- [x] `package-lock.json`を通常のnpm操作で同期した。
+- [x] bundle rootのrepo名を`miku-backlog-api-skills`へ変更した。
+- [x] 正式ZIP名を次へ変更した。
 
 ```text
 igapyon-miku-backlog-api-skills-<version>.zip
 ```
 
-- [ ] 新Releaseには正式ZIPだけを生成し、旧名ZIPを複製していない。
-- [ ] `.github/workflows/release-build.yml`のasset名を更新した。
-- [ ] CIのNode.js 22/24契約を維持した。
+- [x] 新Release用bundleは正式ZIPだけを生成し、旧名ZIPを複製しない。
+- [x] `.github/workflows/release-build.yml`のasset名を更新した。
+- [x] CIのNode.js 22/24契約を維持した。
 
 ### 9.2 runtime取得・provenance
 
-- [ ] import scriptが`miku-backlog-api-<version>.mjs`を受け付ける。
-- [ ] sync scriptが`miku-backlog-api` packageを検証する。
-- [ ] sync scriptが新しいsister directory名を解決する。
-- [ ] runtime resolverがnew-name Releaseの正式artifactを選択する。
-- [ ] runtime resolverがhistorical Releaseの`backlog-api-*`とnew-name Releaseの`miku-backlog-api-*`を意図的かつ決定的に扱う。
-- [ ] source recordのファイル役割を維持した。
-- [ ] 新基盤Releaseの正式assetを取り込んだ。
-- [ ] source recordへ新GitHub URL、tag、commit、asset URL、SHA-256を記録した。
-- [ ] 公開済みRelease、asset、checksumを変更していない。現行source recordは公開済みの新runtimeだけを記録する。
+- [x] import scriptが`miku-backlog-api-<version>.mjs`を受け付ける。
+- [x] sync scriptが`miku-backlog-api` packageを検証する。
+- [x] sync scriptが新しいsister directory名を解決する。
+- [x] runtime resolverがnew-name Releaseの正式artifactを選択する。
+- [x] runtime resolverがhistorical Releaseの`backlog-api-*`とnew-name Releaseの`miku-backlog-api-*`を意図的かつ決定的に扱う。
+- [x] source recordのファイル役割を維持した。
+- [x] 新基盤Releaseの正式assetを取り込んだ。
+- [x] source recordへ新GitHub URL、tag、commit、asset URL、SHA-256を記録した。
+- [x] 公開済みRelease、asset、checksumを変更していない。現行source recordは公開済みの新runtimeだけを記録する。
 
 実行例。値はPhase 3の確定値を使用する。
 
@@ -484,37 +484,37 @@ npm run import:runtime:release -- \
 
 ### 9.3 Skill契約
 
-- [ ] `skills/igapyon-backlog-api/`を`skills/igapyon-miku-backlog-api/`へrenameした。
-- [ ] `SKILL.md` frontmatterの`name`を`igapyon-miku-backlog-api`へ変更した。
-- [ ] `agents/openai.yaml`のSkill名を`igapyon-miku-backlog-api`へ変更した。
-- [ ] `miku-backlog-api`トリガーを追加した。
-- [ ] `miku-backlog-api-skills`トリガーを追加した。
-- [ ] `igapyon-miku-backlog-api` triggerを正式名として追加した。
-- [ ] 旧`igapyon-backlog-api`トリガーを維持した。
-- [ ] 旧`backlog-api`トリガーを維持した。
-- [ ] 旧`backlog-api-skills`トリガーを維持した。
-- [ ] genericな`Backlog`だけではactivateしない境界を維持した。
+- [x] `skills/igapyon-backlog-api/`を`skills/igapyon-miku-backlog-api/`へrenameした。
+- [x] `SKILL.md` frontmatterの`name`を`igapyon-miku-backlog-api`へ変更した。
+- [x] `agents/openai.yaml`のSkill名を`igapyon-miku-backlog-api`へ変更した。
+- [x] `miku-backlog-api`トリガーを追加した。
+- [x] `miku-backlog-api-skills`トリガーを追加した。
+- [x] `igapyon-miku-backlog-api` triggerを正式名として追加した。
+- [x] 旧`igapyon-backlog-api`トリガーを維持した。
+- [x] 旧`backlog-api`トリガーを維持した。
+- [x] 旧`backlog-api-skills`トリガーを維持した。
+- [x] genericな`Backlog`だけではactivateしない境界を維持した。
 
 ### 9.4 runnerとhandoff互換性
 
-- [ ] runner filenameを変更していない。
-- [ ] workflow manifestのoperation IDを変更していない。
-- [ ] `backlog-api-skills.runner/v1`を変更していない。
-- [ ] Issue delete handoff schemaを変更していない。
-- [ ] `workplace/backlog-api-skill/delete-handoffs/`を変更していない。
-- [ ] 既存handoffのdigest計算を変更していない。
-- [ ] 新しいbranding表示と内部schema IDを混同していない。
+- [x] runner filenameを変更していない。
+- [x] workflow manifestのoperation IDを変更していない。
+- [x] `backlog-api-skills.runner/v1`を変更していない。
+- [x] Issue delete handoff schemaを変更していない。
+- [x] `workplace/backlog-api-skill/delete-handoffs/`を変更していない。
+- [x] 既存handoffのdigest計算を変更していない。
+- [x] 新しいbranding表示と内部schema IDを混同していない。
 
 ### 9.5 文書と生成index
 
-- [ ] READMEのrepository名を更新した。
-- [ ] READMEの基盤URLを新URLへ更新した。
-- [ ] READMEへ旧名称互換方針を記載した。
-- [ ] docs/development.mdのtrace chainを更新した。
-- [ ] TODOの旧名称参照を意図に応じて更新した。
-- [ ] runtime referenceとsetup例を更新した。
-- [ ] THIRD_PARTY_NOTICESのartifact名を更新した。
-- [ ] generated indexを正規手順で再生成した。
+- [x] READMEのrepository名を更新した。
+- [x] READMEの基盤URLを新URLへ更新した。
+- [x] READMEへ旧名称互換方針を記載した。
+- [x] docs/development.mdのtrace chainを更新した。
+- [x] TODOの旧名称参照を意図に応じて更新した。
+- [x] runtime referenceとsetup例を更新した。
+- [x] THIRD_PARTY_NOTICESのartifact名を更新した。
+- [x] generated indexを正規手順で再生成した。
 
 ```bash
 miku-indexgen --refresh-index skills/igapyon-miku-backlog-api/index.json
@@ -529,29 +529,29 @@ npm run smoke:runtime
 npm run build:bundle:zip
 ```
 
-- [ ] runtime source testが新URL、新asset名、新checksumを確認した。
-- [ ] skill contract testが新旧triggerを確認した。
-- [ ] runner contract testが既存schemaを確認した。
-- [ ] release bundle contents testが新正式ZIPを確認した。
-- [ ] isolated bundle smokeがinstall後のruntimeを実行した。
-- [ ] 新正式ZIPに必要なSkillファイルとruntimeが含まれる。
-- [ ] 新Releaseに旧名ZIPを複製していない。
-- [ ] `tests/`、`workplace/`、`.DS_Store`、秘密情報がZIPへ入っていない。
-- [ ] final diffに無関係な変更がない。
+- [x] runtime source testが新URL、新asset名、新checksumを確認した。
+- [x] skill contract testが新旧triggerを確認した。
+- [x] runner contract testが既存schemaを確認した。
+- [x] release bundle contents testが新正式ZIPを確認した。
+- [x] isolated bundle smokeがinstall後のruntimeを実行した。
+- [x] 新正式ZIPに必要なSkillファイルとruntimeが含まれる。
+- [x] 新Release用bundleは旧名ZIPを複製していない。
+- [x] `tests/`、`workplace/`、`.DS_Store`、秘密情報がZIPへ入っていない。
+- [x] final diffに無関係な変更がない。
 
 ### 9.7 G4記録欄
 
 ```text
-PR URL:
-commit range:
-Skills version:
-取り込んだ基盤tag:
-取り込んだ基盤commit:
-runtime SHA-256:
-検証日時:
-検証結果:
-既知の警告:
-承認者:
+PR URL: 未作成
+commit range: origin/devel..devel-tiga0804uec（未commit）
+Skills version: 0.7.0
+取り込んだ基盤tag: v0.7.0
+取り込んだ基盤commit: 2ee5cd26cd412906b771987e1491618d137ab993
+runtime SHA-256: 30ab58105b5c06c5b15fc932e1a4fe8b790c0d8cf32f57f0e10f51a76d31d872
+検証日時: 2026-08-04
+検証結果: npm ci、npm test（29 passed）、npm run smoke:runtime、npm run build:bundle:zip、git diff --check が成功
+既知の警告: Skills GitHub rename、PR merge、tag、Releaseは未実施
+承認者: 未記録
 ```
 
 G4承認後もPRをmergeせず、Phase 5のGitHub renameへ進む。
@@ -767,7 +767,7 @@ deprecation warning、テスト、rollbackを別途定義する。
 
 | 日時 | Phase / Gate | リポジトリ | branch / commit | 実施内容 | 結果 | 実施者 |
 | --- | --- | --- | --- | --- | --- | --- |
-| | | | | | | |
+| 2026-08-04 | Phase 4 | backlog-api-skills | `devel-tiga0804uec` / 未commit | `miku-backlog-api v0.7.0` runtime取込み、Skill・package・bundle・文書の名称移行 | ローカル検証成功。Skills GitHub rename、PR merge、tag、Releaseは未実施 | Agent |
 
 ## 17. 最終サマリー記入欄
 

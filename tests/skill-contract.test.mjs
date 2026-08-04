@@ -4,7 +4,7 @@ import path from "node:path";
 import test from "node:test";
 
 const ROOT = process.cwd();
-const skillRoot = path.resolve(ROOT, "skills", "igapyon-backlog-api");
+const skillRoot = path.resolve(ROOT, "skills", "igapyon-miku-backlog-api");
 const skill = fs.readFileSync(path.resolve(skillRoot, "SKILL.md"), "utf8");
 const requestRouting = fs.readFileSync(
   path.resolve(skillRoot, "references", "workflow", "request-routing.md"),
@@ -12,11 +12,17 @@ const requestRouting = fs.readFileSync(
 );
 const safety = fs.readFileSync(path.resolve(skillRoot, "references", "safety.md"), "utf8");
 const runtimeSource = JSON.parse(
-  fs.readFileSync(path.resolve(skillRoot, "runtime", "backlog-api-source.json"), "utf8")
+  fs.readFileSync(path.resolve(skillRoot, "runtime", "miku-backlog-api-source.json"), "utf8")
 );
 
 test("skill contract keeps explicit activation and CLI-only boundary", () => {
-  assert.match(skill, /^---\nname: igapyon-backlog-api\n/m);
+  assert.match(skill, /^---\nname: igapyon-miku-backlog-api\n/m);
+  assert.match(skill, /`igapyon-miku-backlog-api`/);
+  assert.match(skill, /`miku-backlog-api`/);
+  assert.match(skill, /`miku-backlog-api-skills`/);
+  assert.match(skill, /`igapyon-backlog-api`/);
+  assert.match(skill, /`backlog-api`/);
+  assert.match(skill, /`backlog-api-skills`/);
   assert.match(skill, /Do not activate from the word `Backlog` alone/);
   assert.match(skill, /This skill is `cli-only`/);
   assert.match(skill, /do not call the Backlog REST API directly/);
@@ -72,7 +78,7 @@ test("required bundled files exist", () => {
     "THIRD_PARTY_NOTICES.md",
     "licenses/backlog-mcp-server-MIT.txt",
     `runtime/${runtimeSource.artifact.file}`,
-    "runtime/backlog-api-source.json",
+    "runtime/miku-backlog-api-source.json",
     "references/INDEX.md",
     "references/runtime/operations-map.md",
     "references/runtime/setup.md",

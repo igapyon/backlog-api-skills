@@ -26,7 +26,7 @@ import {
 
 export const RUNNER_SCHEMA_VERSION = "backlog-api-skills.runner/v1";
 export const HANDOFF_SCHEMA_VERSION = "backlog-api-skills.issue-delete-handoff/v1";
-export const PRODUCT_VERSION = "0.6.2";
+export const PRODUCT_VERSION = "0.7.0";
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const SKILL_ROOT = path.resolve(SCRIPT_DIRECTORY, "..");
@@ -416,7 +416,7 @@ export function parseRunnerCliArgs(argv) {
 
 export function resolveRuntimeIdentity(skillRoot = SKILL_ROOT) {
   const runtimeDirectory = path.resolve(skillRoot, "runtime");
-  const source = JSON.parse(readFileSync(path.join(runtimeDirectory, "backlog-api-source.json"), "utf8"));
+  const source = JSON.parse(readFileSync(path.join(runtimeDirectory, "miku-backlog-api-source.json"), "utf8"));
   const runtimePath = path.resolve(runtimeDirectory, source.artifact.file);
   if (!existsSync(runtimePath)) {
     throw new BacklogSkillRunnerError("RUNTIME_NOT_FOUND", `Missing runtime: ${source.artifact.file}`);

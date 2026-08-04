@@ -3,9 +3,9 @@
 The installed skill contains a versioned, single-file Node runtime under
 `runtime/`. It does not require an MCP server process.
 
-The runtime is released by <https://github.com/igapyon/backlog-api>. Its version,
+The runtime is released by <https://github.com/igapyon/miku-backlog-api>. Its version,
 release tag, source commit, release asset URL, and SHA-256 are stored in
-`runtime/backlog-api-source.json`.
+`runtime/miku-backlog-api-source.json`.
 
 ## Requirements
 
@@ -72,7 +72,7 @@ Node process explicitly. Begin live verification with the read-only
 
 ```bash
 printf '{}\n' | node --env-file=<agent-workspace>/workplace/backlog.env \
-  <skill-directory>/runtime/backlog-api-0.6.0.mjs \
+  <skill-directory>/runtime/miku-backlog-api-0.7.0.mjs \
   call get_space --input - --verbose
 ```
 
@@ -90,9 +90,9 @@ printf '{}\n' | node --env-file=<agent-workspace>/workplace/backlog.env \
 Verify installation without credentials:
 
 ```bash
-node runtime/backlog-api-0.6.0.mjs --version
-node runtime/backlog-api-0.6.0.mjs tools list
-node runtime/backlog-api-0.6.0.mjs tools describe get_space
+node runtime/miku-backlog-api-0.7.0.mjs --version
+node runtime/miku-backlog-api-0.7.0.mjs tools list
+node runtime/miku-backlog-api-0.7.0.mjs tools describe get_space
 ```
 
 An actual Backlog operation requires configured credentials. A missing or

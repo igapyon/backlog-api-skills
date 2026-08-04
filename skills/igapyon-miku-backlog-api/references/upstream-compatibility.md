@@ -14,9 +14,9 @@ boundary. The conversion adds a CLI envelope, trace metadata, input validation,
 and destructive-operation confirmation without reimplementing Backlog calls.
 
 The Node conversion is maintained in
-<https://github.com/igapyon/backlog-api>. This Skill repository consumes a
+<https://github.com/igapyon/miku-backlog-api>. This Skill repository consumes a
 versioned runtime and records its source commit and SHA-256 under `runtime/`.
-The bundled `backlog-api` v0.6.0 runtime adds the Node-specific
+The bundled `miku-backlog-api` v0.7.0 runtime adds the Node-specific
 `get_rate_limit` operation and carries the upstream v0.14.0 contracts for
 `add_related_issue`, `get_related_issues`, `remove_related_issue`, and
 `update_issue_comment`, with machine-readable `tools describe` contracts.
@@ -35,5 +35,5 @@ and parameters. When a newer upstream checkout differs from this reference:
 1. do not invent or translate unsupported parameters
 2. do not mix the newer checkout into a released runtime implicitly
 3. update the mapping and run parity tests in `backlog-api`
-4. build and commit the Node release source
+4. build and publish the Node release source
 5. explicitly synchronize the new runtime into this Skill

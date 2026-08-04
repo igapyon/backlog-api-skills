@@ -2,13 +2,13 @@
 
 ## Design Record
 
-- checked date: 2026-08-01
-- repository version: `0.6.2`
+- checked date: 2026-08-04
+- repository version: `0.7.0`
 - implementation maturity: beta, standalone CLI-backed Agent Skill
 - version policy: keep numeric Semantic Versions without a beta suffix
 - runtime policy: the Skill version may advance ahead of the published runtime;
   the runtime version and provenance remain independently pinned
-- Node provider: <https://github.com/igapyon/backlog-api>
+- Node provider: <https://github.com/igapyon/miku-backlog-api>
 - original combined implementation commit:
   `d734c4fb1ecb91abfc2acf2b4995f3f8a4273fd2`
 
@@ -26,7 +26,7 @@ This repository owns:
 - runtime source identity and checksum records
 - Skill tests, bundles, and releases
 
-The sister `backlog-api` repository owns:
+The sister `miku-backlog-api` repository owns:
 
 - Node Core/CLI source and operation catalog
 - direct invocation of the pinned upstream handlers
@@ -36,12 +36,12 @@ The sister `backlog-api` repository owns:
 
 ## Runtime Refresh Contract
 
-1. publish and verify the target `backlog-api` Release
+1. publish and verify the target `miku-backlog-api` Release
 2. download the versioned CLI asset and `SHA256SUMS`
 3. confirm the downloaded asset checksum matches the published checksum
 4. run `npm run import:runtime:release` with the exact version, tag, commit,
    asset path, and checksum
-5. confirm `backlog-api-source.json` records the GitHub Release asset identity
+5. confirm `miku-backlog-api-source.json` records the GitHub Release asset identity
 6. update runtime references when the runtime changes; update the Skill
    repository version independently as needed
 7. regenerate the Skill index
@@ -54,8 +54,8 @@ The trace chain is:
 
 ```text
 backlog-mcp-server tag/commit/tool
-  -> backlog-api version/commit/operation/artifact
-  -> backlog-api-skills version/workflow/runtime checksum
+  -> miku-backlog-api version/commit/operation/artifact
+  -> miku-backlog-api-skills version/workflow/runtime checksum
 ```
 
 ## Fixed Single-Issue Delete Runner
