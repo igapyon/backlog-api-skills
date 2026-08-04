@@ -4,7 +4,7 @@
 Backlog through the bundled `miku-backlog-api` Node CLI runtime.
 
 This product is currently beta. Its version remains a numeric Semantic Version
-such as `0.7.3`; beta status is not encoded in the version number.
+such as `0.7.4`; beta status is not encoded in the version number.
 
 The Backlog MCP-equivalent Node Core/CLI is maintained separately in the sister
 [`miku-backlog-api`](https://github.com/igapyon/miku-backlog-api) repository. This
@@ -32,7 +32,7 @@ release artifacts belong to `backlog-api`, not this repository.
   `miku-backlog-api-skills`; compatibility triggers: `igapyon-backlog-api`,
   `backlog-api`, or `backlog-api-skills`
 - backend policy: CLI only
-- Skill version: `0.7.3`
+- Skill version: `0.7.4`
 - bundled runtime: `runtime/miku-backlog-api-0.7.0.mjs`
 - runtime source record: `runtime/miku-backlog-api-source.json`
 
