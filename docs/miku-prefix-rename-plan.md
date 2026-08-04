@@ -4,7 +4,7 @@
 
 | 項目 | 値 |
 | --- | --- |
-| 状態 | Skills GitHub rename・PR #29 merge・v0.7.0 Release公開済み / Phase 6の外部参照とGitHub管理設定は継続確認 |
+| 状態 | Skills GitHub rename・PR #29 merge・v0.7.1 Release公開済み / Phase 6の外部参照とGitHub管理設定は継続確認 |
 | 作成日 | 2026-08-04 |
 | 対象Issue | [`miku-backlog-api` #21](https://github.com/igapyon/miku-backlog-api/issues/21)、[`miku-backlog-api-skills` #25](https://github.com/igapyon/miku-backlog-api-skills/issues/25) |
 | 基盤リポジトリ | `igapyon/miku-backlog-api` |
@@ -677,7 +677,7 @@ GitHub Pagesのproject site URLとAction/reusable workflow参照には例外が�
 - [x] runtime source recordが新基盤Releaseを指す。
 - [x] 新正式ZIPが公開されている。
 - [x] 新Releaseに旧名ZIPを複製していない。
-- [ ] CI、test、runtime smoke、bundle、isolated smokeが成功している。
+- [x] CI、test、runtime smoke、bundle、isolated smokeが成功している。
 
 ### 12.3 GitHubと外部連携
 
@@ -771,6 +771,7 @@ deprecation warning、テスト、rollbackを別途定義する。
 | 2026-08-04 | Phase 4 | backlog-api-skills | `devel-tiga0804uec` / 未commit | `miku-backlog-api v0.7.0` runtime取込み、Skill・package・bundle・文書の名称移行 | ローカル検証成功。Skills GitHub rename、PR merge、tag、Releaseは未実施 | Agent |
 | 2026-08-04 | Phase 5 / 10.4確認 | miku-backlog-api-skills | `devel` / `bfbff8f2b2365ec2ca7804a75d74040288b1acfd` | rename後のURL、Issue #25、PR #29、tag、Release、ZIPを読み取り確認 | 旧URLと旧Release URLはredirect。`v0.7.0` Releaseの正式ZIPをdownloadし、SHA-256一致を確認 | Agent |
 | 2026-08-04 | Phase 6 / 7確認 | miku-backlog-api-skills | `devel` / `bfbff8f2b2365ec2ca7804a75d74040288b1acfd` | README、docs、traceability、CI設定、local remoteのcanonical URLを確認 | 移行計画内の履歴用URL以外に旧canonical URLは残存せず、local remoteも新URLを指す | Agent |
+| 2026-08-04 | v0.7.1 Release確認 | miku-backlog-api-skills | `devel` / `8ce3d5befb9cc5fe9bb03a2bd6a8f9549ac16e4b` | Release、ZIP、checksum、CIを確認 | `v0.7.1` Release公開済み。正式ZIPのSHA-256 `bdcb9cd0212bebfb683051dfe58cc9c6c4b299557597b37d8462dfc4eb58247c` が一致し、CIとrelease workflowが成功 | Agent |
 
 ## 17. 最終サマリー記入欄
 
