@@ -26,7 +26,7 @@ import {
 
 export const RUNNER_SCHEMA_VERSION = "backlog-api-skills.runner/v1";
 export const HANDOFF_SCHEMA_VERSION = "backlog-api-skills.issue-delete-handoff/v1";
-export const PRODUCT_VERSION = "0.7.2";
+export const PRODUCT_VERSION = "0.7.3";
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const SKILL_ROOT = path.resolve(SCRIPT_DIRECTORY, "..");
