@@ -1,6 +1,6 @@
 {
-  "name": "backlog-api-skills",
-  "version": "0.6.3",
+  "name": "miku-backlog-api-skills",
+  "version": "0.7.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -10,8 +10,8 @@
     "test": "node --test --test-concurrency=1 tests/*.test.mjs",
     "build": "npm test && npm run build:bundle:zip",
     "smoke:runtime": "node scripts/smoke-runtime.mjs",
-    "sync:runtime": "node scripts/sync-backlog-api-runtime.mjs",
-    "import:runtime:release": "node scripts/import-backlog-api-release.mjs",
+    "sync:runtime": "node scripts/sync-miku-backlog-api-runtime.mjs",
+    "import:runtime:release": "node scripts/import-miku-backlog-api-release.mjs",
     "build:bundle": "node scripts/build-skill-bundle.mjs",
     "build:bundle:zip": "node scripts/build-skill-bundle-zip.mjs"
   }

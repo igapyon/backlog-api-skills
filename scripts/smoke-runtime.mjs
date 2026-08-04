@@ -9,21 +9,21 @@ const root = process.cwd();
 const packageJson = JSON.parse(fs.readFileSync(path.resolve(root, "package.json"), "utf8"));
 const source = JSON.parse(
   fs.readFileSync(
-    path.resolve(root, "skills", "igapyon-backlog-api", "runtime", "backlog-api-source.json"),
+    path.resolve(root, "skills", "igapyon-miku-backlog-api", "runtime", "miku-backlog-api-source.json"),
     "utf8"
   )
 );
 const runtime = path.resolve(
   root,
   "skills",
-  "igapyon-backlog-api",
+  "igapyon-miku-backlog-api",
   "runtime",
   source.artifact.file
 );
 const skillRunner = path.resolve(
   root,
   "skills",
-  "igapyon-backlog-api",
+  "igapyon-miku-backlog-api",
   "scripts",
   "backlog-api-skill-run.mjs"
 );
@@ -42,7 +42,7 @@ const catalog = JSON.parse(
 assert.match(packageJson.version, /^\d+\.\d+\.\d+$/);
 assert.equal(version, source.source.version);
 assert.equal(skillRunnerVersion, packageJson.version);
-assert.equal(catalog.product.name, "backlog-api");
+assert.equal(catalog.product.name, "miku-backlog-api");
 assert.equal(catalog.product.version, source.source.version);
 assert.equal(catalog.operations.length, 63);
 
@@ -70,4 +70,4 @@ assert.deepEqual(
   ]
 );
 
-process.stdout.write("[smoke:runtime] bundled backlog-api runtime and skill runner passed\n");
+process.stdout.write("[smoke:runtime] bundled miku-backlog-api runtime and skill runner passed\n");

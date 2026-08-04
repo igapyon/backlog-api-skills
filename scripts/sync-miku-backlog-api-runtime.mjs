@@ -11,23 +11,23 @@ const root = path.resolve(scriptDir, "..");
 const sourceRoot = resolveSourceRoot(process.argv.slice(2));
 const sourcePackage = readJson(path.resolve(sourceRoot, "package.json"));
 
-if (sourcePackage.name !== "backlog-api") {
-  throw new Error(`expected backlog-api package, found: ${sourcePackage.name ?? "unknown"}`);
+if (sourcePackage.name !== "miku-backlog-api") {
+  throw new Error(`expected miku-backlog-api package, found: ${sourcePackage.name ?? "unknown"}`);
 }
 
-const sourceArtifact = path.resolve(sourceRoot, "bundle", "backlog-api.mjs");
+const sourceArtifact = path.resolve(sourceRoot, "bundle", "miku-backlog-api.mjs");
 if (!fs.existsSync(sourceArtifact)) {
-  throw new Error(`missing Node artifact; run npm run build in backlog-api first: ${sourceArtifact}`);
+  throw new Error(`missing Node artifact; run npm run build in miku-backlog-api first: ${sourceArtifact}`);
 }
 const upstream = readUpstreamIdentity(sourceArtifact);
 
-const runtimeDir = path.resolve(root, "skills", "igapyon-backlog-api", "runtime");
-const runtimeName = `backlog-api-${sourcePackage.version}.mjs`;
+const runtimeDir = path.resolve(root, "skills", "igapyon-miku-backlog-api", "runtime");
+const runtimeName = `miku-backlog-api-${sourcePackage.version}.mjs`;
 const runtimePath = path.resolve(runtimeDir, runtimeName);
 
 fs.mkdirSync(runtimeDir, { recursive: true });
 for (const filename of fs.readdirSync(runtimeDir)) {
-  if (/^backlog-api-\d+\.\d+\.\d+\.mjs$/.test(filename)) {
+  if (/^(?:backlog-api|miku-backlog-api)-\d+\.\d+\.\d+\.mjs$/.test(filename)) {
     fs.rmSync(path.resolve(runtimeDir, filename));
   }
 }
@@ -40,7 +40,7 @@ const sha256 = crypto.createHash("sha256").update(fs.readFileSync(runtimePath)).
 const sourceRecord = {
   schemaVersion: 1,
   source: {
-    repository: "https://github.com/igapyon/backlog-api",
+    repository: "https://github.com/igapyon/miku-backlog-api",
     version: sourcePackage.version,
     commit,
     dirty
@@ -53,22 +53,26 @@ const sourceRecord = {
 };
 
 fs.writeFileSync(
-  path.resolve(runtimeDir, "backlog-api-source.json"),
+  path.resolve(runtimeDir, "miku-backlog-api-source.json"),
   `${JSON.stringify(sourceRecord, null, 2)}\n`
 );
 
 process.stdout.write(
-  `[sync:runtime] copied ${runtimeName} from backlog-api ${sourcePackage.version} (${commit.slice(0, 12)}, dirty=${dirty})\n`
+  `[sync:runtime] copied ${runtimeName} from miku-backlog-api ${sourcePackage.version} (${commit.slice(0, 12)}, dirty=${dirty})\n`
 );
 
 function resolveSourceRoot(args) {
   if (args.length === 0) {
-    return path.resolve(root, "..", "backlog-api");
+    const candidates = [
+      path.resolve(root, "..", "miku-backlog-api"),
+      path.resolve(root, "..", "backlog-api")
+    ];
+    return candidates.find((candidate) => fs.existsSync(candidate)) ?? candidates[0];
   }
   if (args.length === 2 && args[0] === "--from") {
     return path.resolve(args[1]);
   }
-  throw new Error("usage: npm run sync:runtime -- [--from <backlog-api-directory>]");
+  throw new Error("usage: npm run sync:runtime -- [--from <miku-backlog-api-directory>]");
 }
 
 function readJson(filename) {

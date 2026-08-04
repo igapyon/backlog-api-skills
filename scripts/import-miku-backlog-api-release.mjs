@@ -9,9 +9,9 @@ import { fileURLToPath } from "node:url";
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(scriptDir, "..");
 const options = parseArgs(process.argv.slice(2));
-const releaseFile = `backlog-api-${options.version}.mjs`;
-const releaseUrl = `https://github.com/igapyon/backlog-api/releases/download/${options.tag}/${releaseFile}`;
-const checksumUrl = `https://github.com/igapyon/backlog-api/releases/download/${options.tag}/SHA256SUMS`;
+const releaseFile = `miku-backlog-api-${options.version}.mjs`;
+const releaseUrl = `https://github.com/igapyon/miku-backlog-api/releases/download/${options.tag}/${releaseFile}`;
+const checksumUrl = `https://github.com/igapyon/miku-backlog-api/releases/download/${options.tag}/SHA256SUMS`;
 const artifact = path.resolve(options.artifact);
 
 if (!fs.existsSync(artifact)) {
@@ -31,12 +31,12 @@ if (reportedVersion !== options.version) {
 }
 const upstream = readUpstreamIdentity(artifact);
 
-const runtimeDir = path.resolve(root, "skills", "igapyon-backlog-api", "runtime");
+const runtimeDir = path.resolve(root, "skills", "igapyon-miku-backlog-api", "runtime");
 const runtimePath = path.resolve(runtimeDir, releaseFile);
 
 fs.mkdirSync(runtimeDir, { recursive: true });
 for (const filename of fs.readdirSync(runtimeDir)) {
-  if (/^backlog-api-\d+\.\d+\.\d+\.mjs$/.test(filename)) {
+  if (/^(?:backlog-api|miku-backlog-api)-\d+\.\d+\.\d+\.mjs$/.test(filename)) {
     fs.rmSync(path.resolve(runtimeDir, filename));
   }
 }
@@ -46,11 +46,11 @@ fs.chmodSync(runtimePath, 0o755);
 const sourceRecord = {
   schemaVersion: 1,
   source: {
-    repository: "https://github.com/igapyon/backlog-api",
+    repository: "https://github.com/igapyon/miku-backlog-api",
     version: options.version,
     tag: options.tag,
     commit: options.commit,
-    release: `https://github.com/igapyon/backlog-api/releases/tag/${options.tag}`,
+    release: `https://github.com/igapyon/miku-backlog-api/releases/tag/${options.tag}`,
     dirty: false
   },
   artifact: {
@@ -64,7 +64,7 @@ const sourceRecord = {
 };
 
 fs.writeFileSync(
-  path.resolve(runtimeDir, "backlog-api-source.json"),
+  path.resolve(runtimeDir, "miku-backlog-api-source.json"),
   `${JSON.stringify(sourceRecord, null, 2)}\n`
 );
 

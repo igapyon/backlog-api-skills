@@ -5,14 +5,14 @@ import { execFileSync } from "node:child_process";
 import test from "node:test";
 
 const ROOT = process.cwd();
-const repoName = "backlog-api-skills";
-const skillName = "igapyon-backlog-api";
+const repoName = "miku-backlog-api-skills";
+const skillName = "igapyon-miku-backlog-api";
 const packageJson = JSON.parse(
   fs.readFileSync(path.resolve(ROOT, "package.json"), "utf8")
 );
 const runtimeSource = JSON.parse(
   fs.readFileSync(
-    path.resolve(ROOT, "skills", skillName, "runtime", "backlog-api-source.json"),
+    path.resolve(ROOT, "skills", skillName, "runtime", "miku-backlog-api-source.json"),
     "utf8"
   )
 );
@@ -42,7 +42,7 @@ test("release zip contains installable skill files and excludes development-only
   assertIncludes(entries, `skills/${skillName}/scripts/backlog-api-workflow-manifest.mjs`);
   assertIncludes(entries, `skills/${skillName}/scripts/backlog-api-skill-run.mjs`);
   assertIncludes(entries, `skills/${skillName}/runtime/${runtimeSource.artifact.file}`);
-  assertIncludes(entries, `skills/${skillName}/runtime/backlog-api-source.json`);
+  assertIncludes(entries, `skills/${skillName}/runtime/miku-backlog-api-source.json`);
   assertIncludes(entries, `skills/${skillName}/LICENSE`);
   assertIncludes(entries, `skills/${skillName}/THIRD_PARTY_NOTICES.md`);
   assertIncludes(entries, `skills/${skillName}/licenses/backlog-mcp-server-MIT.txt`);

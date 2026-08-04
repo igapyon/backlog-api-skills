@@ -9,7 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, "..");
 
-const repoName = "backlog-api-skills";
+const repoName = "miku-backlog-api-skills";
 const packageJson = JSON.parse(
   fs.readFileSync(path.resolve(repoRoot, "package.json"), "utf8")
 );

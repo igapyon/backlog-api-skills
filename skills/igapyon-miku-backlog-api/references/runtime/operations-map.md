@@ -3,18 +3,18 @@
 The bundled Node runtime exposes the checked Nulab Backlog MCP Server tools
 without starting an MCP transport.
 
-The runtime is produced by <https://github.com/igapyon/backlog-api>. Use
-`runtime/backlog-api-source.json` for its exact source and artifact identity.
+The runtime is produced by <https://github.com/igapyon/miku-backlog-api>. Use
+`runtime/miku-backlog-api-source.json` for its exact source and artifact identity.
 
 ## Runtime Discovery
 
 Use the newest versioned runtime under `runtime/`:
 
 ```bash
-node runtime/backlog-api-0.6.0.mjs --version
-node runtime/backlog-api-0.6.0.mjs tools list
-node runtime/backlog-api-0.6.0.mjs tools describe get_issue
-node runtime/backlog-api-0.6.0.mjs trace get_issue
+node runtime/miku-backlog-api-0.7.0.mjs --version
+node runtime/miku-backlog-api-0.7.0.mjs tools list
+node runtime/miku-backlog-api-0.7.0.mjs tools describe get_issue
+node runtime/miku-backlog-api-0.7.0.mjs trace get_issue
 ```
 
 The installed absolute path may differ. Resolve it from the active skill
@@ -25,7 +25,7 @@ directory rather than assuming the current working directory.
 Pass exactly one JSON object:
 
 ```bash
-node runtime/backlog-api-0.6.0.mjs call get_issue --input request.json --verbose
+node runtime/miku-backlog-api-0.7.0.mjs call get_issue --input request.json --verbose
 ```
 
 Use `--input -` for stdin. Use `tools describe <operation>` for the input JSON
@@ -67,7 +67,7 @@ Use `tools list` for the authoritative bundled inventory.
 | `git` | repository and pull-request reads | pull-request and comment add/update operations |
 | `document` | `get_documents`, `get_document_tree`, `get_document` | upstream-named `addDocument` |
 | `notifications` | `get_notifications`, `count_notifications` | mark-as-read and unread-count reset operations |
-| `backlog-api` | `get_rate_limit` | none |
+| `miku-backlog-api` | `get_rate_limit` | none |
 
 The camelCase operation `addDocument` and `count_notifications` spelling are
 preserved from the checked upstream contract. Do not silently rename them.
