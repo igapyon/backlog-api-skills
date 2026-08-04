@@ -4,7 +4,7 @@
 
 | 項目 | 値 |
 | --- | --- |
-| 状態 | Skills GitHub rename・PR #29 merge・v0.7.1 Release公開済み / Phase 6の外部参照とGitHub管理設定は継続確認 |
+| 状態 | 名称変更・Skills PR #32 merge・v0.7.3 Release公開済み・Issue #21/#25クローズ済み / GitHub管理設定は継続確認 |
 | 作成日 | 2026-08-04 |
 | 対象Issue | [`miku-backlog-api` #21](https://github.com/igapyon/miku-backlog-api/issues/21)、[`miku-backlog-api-skills` #25](https://github.com/igapyon/miku-backlog-api-skills/issues/25) |
 | 基盤リポジトリ | `igapyon/miku-backlog-api` |
@@ -641,10 +641,10 @@ checksum確認結果: SHA-256 e1bf0156b47a54fb5afe40ed7e09d8e2fed3f0a70685e5be4c
 
 ## 11. Phase 6: 連携・外部参照の切替
 
-- [ ] 基盤READMEのSkillsリンクを正式な新URLへ変更した。
+- [x] 基盤READMEのSkillsリンクを正式な新URLへ変更した（PR #23、merge commit `c0b0ee9047386973bc8ebb1c7947267e99f5d369`）。
 - [x] Skills READMEの基盤リンクが正式な新URLを指す。
 - [x] docs、TODO、traceabilityのcanonical URLを更新した。
-- [ ] GitHub Aboutのdescriptionとwebsite URLを更新した。
+- [x] Skills GitHub Aboutのdescriptionを更新し、website URLは未設定であることを確認した。
 - [ ] 外部README、インストール手順、clone URLの更新依頼を完了した。
 - [ ] Action/reusable workflow利用者がいる場合、全参照を更新した。
 - [x] 主要なローカルcloneのremoteを更新した。
@@ -682,7 +682,7 @@ GitHub Pagesのproject site URLとAction/reusable workflow参照には例外が�
 ### 12.3 GitHubと外部連携
 
 - [x] 旧Web URLがredirectされる。
-- [ ] Issue #21と#25が新URLで開ける。
+- [x] Issue #21と#25が新URLで開ける。
 - [x] 既存PR、tag、Releaseが保持されている。
 - [ ] Actions、ruleset、secrets、webhookが正常である。
 - [x] 主要cloneのremoteが新URLを指す。
@@ -694,12 +694,12 @@ GitHub Pagesのproject site URLとAction/reusable workflow参照には例外が�
 Issueへのcomment、本文更新、closeはそれぞれ別のmiku-scm承認workflowで行う。
 この文書の完了だけではGitHub Issueのmutationを承認しない。
 
-- [ ] Issue #21へ採用理由、互換方針、実施結果を記録した。
-- [ ] Issue #25へSkills側の名称対応、runtime連携、実施結果を記録した。
-- [ ] 必要な後続Issueを作成した。
-- [ ] Issue #21の完了条件を確認した。
-- [ ] Issue #25の完了条件を確認した。
-- [ ] 人間の承認後に各Issueをcloseした。
+- [x] Issue #21へ採用理由、互換方針、実施結果を記録した。
+- [x] Issue #25へSkills側の名称対応、runtime連携、実施結果を記録した。
+- [x] 必要な後続Issueはないと判断した。
+- [x] Issue #21の完了条件を確認した。
+- [x] Issue #25の完了条件を確認した。
+- [x] 人間の承認後に各Issueをcloseした。
 
 ## 13. 停止条件
 
@@ -772,27 +772,30 @@ deprecation warning、テスト、rollbackを別途定義する。
 | 2026-08-04 | Phase 5 / 10.4確認 | miku-backlog-api-skills | `devel` / `bfbff8f2b2365ec2ca7804a75d74040288b1acfd` | rename後のURL、Issue #25、PR #29、tag、Release、ZIPを読み取り確認 | 旧URLと旧Release URLはredirect。`v0.7.0` Releaseの正式ZIPをdownloadし、SHA-256一致を確認 | Agent |
 | 2026-08-04 | Phase 6 / 7確認 | miku-backlog-api-skills | `devel` / `bfbff8f2b2365ec2ca7804a75d74040288b1acfd` | README、docs、traceability、CI設定、local remoteのcanonical URLを確認 | 移行計画内の履歴用URL以外に旧canonical URLは残存せず、local remoteも新URLを指す | Agent |
 | 2026-08-04 | v0.7.1 Release確認 | miku-backlog-api-skills | `devel` / `8ce3d5befb9cc5fe9bb03a2bd6a8f9549ac16e4b` | Release、ZIP、checksum、CIを確認 | `v0.7.1` Release公開済み。正式ZIPのSHA-256 `bdcb9cd0212bebfb683051dfe58cc9c6c4b299557597b37d8462dfc4eb58247c` が一致し、CIとrelease workflowが成功 | Agent |
+| 2026-08-04 | Phase 6 | miku-backlog-api | `devel` / `c0b0ee9047386973bc8ebb1c7947267e99f5d369` | 基盤READMEのSkillsリポジトリリンクをcanonical URLへ更新（PR #23） | PR #23はmerge済み | 人間・Agent |
+| 2026-08-04 | v0.7.3 Release確認 | miku-backlog-api-skills | `devel` / `83b48b84e180265e6f730d4accea453153384a68` | PR #32のmerge、`v0.7.3` Release、正式ZIP、checksumを確認 | `igapyon-miku-backlog-api-skills-0.7.3.zip`（215212 bytes）のSHA-256 `55758072d6c7f290f4eb2b74d8742266903a3ba5f0b3b8846a10711b9591e1cd` が一致 | Agent |
+| 2026-08-04 | Phase 7 / G6完了記録 | miku-backlog-api / miku-backlog-api-skills | GitHub Issue #21 / #25 | 既存コメントと完了条件を確認し、人間承認済みhandoffを適用 | Issue #21・#25を `completed` でclose | 人間・Agent |
 
 ## 17. 最終サマリー記入欄
 
 ```text
-基盤旧URL:
-基盤新URL:
-基盤最終version/tag/commit:
-基盤Release URL:
+基盤旧URL: https://github.com/igapyon/backlog-api
+基盤新URL: https://github.com/igapyon/miku-backlog-api
+基盤最終version/tag/commit: 0.7.0 / v0.7.0 / 2ee5cd26cd412906b771987e1491618d137ab993
+基盤Release URL: https://github.com/igapyon/miku-backlog-api/releases/tag/v0.7.0
 
-Skills旧URL:
-Skills新URL:
-Skills最終version/tag/commit:
-Skills Release URL:
+Skills旧URL: https://github.com/igapyon/backlog-api-skills
+Skills新URL: https://github.com/igapyon/miku-backlog-api-skills
+Skills最終version/tag/commit: 0.7.3 / v0.7.3 / 83b48b84e180265e6f730d4accea453153384a68
+Skills Release URL: https://github.com/igapyon/miku-backlog-api-skills/releases/tag/v0.7.3
 
-runtime source version/tag/commit/SHA-256:
+runtime source version/tag/commit/SHA-256: miku-backlog-api 0.7.0 / v0.7.0 / 2ee5cd26cd412906b771987e1491618d137ab993 / 30ab58105b5c06c5b15fc932e1a4fe8b790c0d8cf32f57f0e10f51a76d31d872
 旧互換CLIの期限:
 旧互換assetの期限:
 旧互換triggerの期限:
 
-未解決事項:
-後続Issue:
-最終承認者:
-完了日時:
+未解決事項: privateなGitHub管理設定（ruleset、secrets、webhook等）は別途管理者確認が必要。website URLは未設定。
+後続Issue: なし
+最終承認者: 人間（Issue close handoff）
+完了日時: 2026-08-04
 ```
