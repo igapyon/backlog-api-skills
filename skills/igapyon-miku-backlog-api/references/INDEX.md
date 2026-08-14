@@ -9,11 +9,16 @@ Use this index to choose the smallest reference needed for the current request.
   reporting
 - `safety.md`: credentials, tenant boundaries, confirmation, and destructive
   operations
-- `../scripts/backlog-api-workflow-manifest.mjs`: common Issue-search and
-  single-issue deletion route identifiers and approval gates
-- `../scripts/backlog-api-skill-run.mjs`: deterministic common Issue-search
-  and single-issue deletion runner
+- `../scripts/backlog-api-workflow-manifest.mjs`: fixed workflow identifiers
+  and approval gates, including reviewed create and update routes
+- `../scripts/backlog-api-skill-run.mjs`: deterministic common Issue-search,
+  reviewed create/update, and single-issue deletion runner
 - `upstream-compatibility.md`: checked Nulab Backlog MCP Server baseline
+- `feature-feasibility.md`: checked feature capability matrix and supported
+  implementation boundaries
+- `integration-proposals.md`: explicit cross-product WBS and spreadsheet
+  proposal contracts
+- `workflow/examples.md`: synthetic, non-tenant workflow examples
 
 The upstream Backlog MCP Server owns the converted tool schemas and handlers.
 The bundled runtime is fixed to the compatibility version recorded here; do

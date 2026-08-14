@@ -62,11 +62,51 @@ test("generated Skill bundle runs from an isolated install shape", () => {
 
     assert.match(
       execFileSync("node", [runner, "--help"], { encoding: "utf8" }),
+      /context\.select --session SESSION --project PROJECT_KEY\|PROJECT_ID \[--organization NAME\] --persist/
+    );
+    assert.match(
+      execFileSync("node", [runner, "--help"], { encoding: "utf8" }),
       /issue\.list\.incomplete --project PROJECT_KEY\|PROJECT_ID \[--organization NAME\]/
     );
     assert.match(
       execFileSync("node", [runner, "--help"], { encoding: "utf8" }),
       /issue\.search --project PROJECT_KEY\|PROJECT_ID \[--organization NAME\]/
+    );
+    assert.match(
+      execFileSync("node", [runner, "--help"], { encoding: "utf8" }),
+      /issue\.save --project PROJECT_KEY\|PROJECT_ID \[--organization NAME\]/
+    );
+    assert.match(
+      execFileSync("node", [runner, "--help"], { encoding: "utf8" }),
+      /issue\.export\.xlsx\.preflight --project PROJECT_KEY\|PROJECT_ID \[--organization NAME\]/
+    );
+    assert.match(
+      execFileSync("node", [runner, "--help"], { encoding: "utf8" }),
+      /issue\.export\.xlsx\.apply --apply/
+    );
+    assert.match(
+      execFileSync("node", [runner, "--help"], { encoding: "utf8" }),
+      /issue\.create\.preflight --project PROJECT_KEY\|PROJECT_ID \[--organization NAME\]/
+    );
+    assert.match(
+      execFileSync("node", [runner, "--help"], { encoding: "utf8" }),
+      /issue\.create\.apply --apply/
+    );
+    assert.match(
+      execFileSync("node", [runner, "--help"], { encoding: "utf8" }),
+      /issue\.update\.preflight --issue-key PROJ-123\|--issue-id ID/
+    );
+    assert.match(
+      execFileSync("node", [runner, "--help"], { encoding: "utf8" }),
+      /issue\.update\.apply --apply/
+    );
+    assert.match(
+      execFileSync("node", [runner, "--help"], { encoding: "utf8" }),
+      /issue\.hygiene --project PROJECT_KEY\|PROJECT_ID \[--organization NAME\]/
+    );
+    assert.match(
+      execFileSync("node", [runner, "--help"], { encoding: "utf8" }),
+      /notification\.triage \[--organization NAME\] \[--unread\]/
     );
     assert.match(
       execFileSync("node", [runner, "--help"], { encoding: "utf8" }),
@@ -79,7 +119,28 @@ test("generated Skill bundle runs from an isolated install shape", () => {
     );
     assert.deepEqual(
       workflows.workflows.map((workflow) => workflow.id),
-      ["issue.search", "issue.list.incomplete", "issue.delete.preflight", "issue.delete.handoff.apply"]
+      [
+        "context.list",
+        "context.select",
+        "context.show",
+        "context.clear",
+        "issue.recent.record",
+        "issue.recent.list",
+        "issue.recent.clear",
+        "issue.search",
+        "issue.save",
+        "issue.export.xlsx.preflight",
+        "issue.export.xlsx.apply",
+        "issue.create.preflight",
+        "issue.create.apply",
+        "issue.update.preflight",
+        "issue.update.apply",
+        "issue.list.incomplete",
+        "issue.hygiene",
+        "notification.triage",
+        "issue.delete.preflight",
+        "issue.delete.handoff.apply"
+      ]
     );
   } finally {
     fs.rmSync(isolatedRoot, { recursive: true, force: true });

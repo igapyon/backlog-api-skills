@@ -4,7 +4,7 @@
 Backlog through the bundled `miku-backlog-api` Node CLI runtime.
 
 This product is currently beta. Its version remains a numeric Semantic Version
-such as `0.7.4`; beta status is not encoded in the version number.
+such as `0.7.5`; beta status is not encoded in the version number.
 
 The Backlog MCP-equivalent Node Core/CLI is maintained separately in the sister
 [`miku-backlog-api`](https://github.com/igapyon/miku-backlog-api) repository. This
@@ -32,7 +32,7 @@ release artifacts belong to `backlog-api`, not this repository.
   `miku-backlog-api-skills`; compatibility triggers: `igapyon-backlog-api`,
   `backlog-api`, or `backlog-api-skills`
 - backend policy: CLI only
-- Skill version: `0.7.4`
+- Skill version: `0.7.5`
 - bundled runtime: `runtime/miku-backlog-api-0.7.0.mjs`
 - runtime source record: `runtime/miku-backlog-api-source.json`
 
@@ -42,6 +42,66 @@ activate the Skill by themselves.
 The Skill and the bundled runtime are versioned independently. Consult the
 runtime source record for the exact runtime version and provenance rather than
 inferring it from the Skill version.
+
+## Working Context
+
+The bundled runtime deliberately has no saved “current Space/Project”
+operation. The Skill can retain an organization and resolved project as an
+explicit, session-scoped context for its fixed workflows.
+
+By default, keep that context in the Agent conversation. Before creating a
+local context record, the Agent must obtain the user's explicit permission. A
+persisted context contains only the organization label and project ID, key, and
+name—never an API key or domain—and is written with owner-only permissions
+under the ignored `workplace/backlog-api-skill/session-contexts/` directory.
+
+```bash
+# Show configured Space labels; credentials and domains are never printed.
+node skills/igapyon-miku-backlog-api/scripts/backlog-api-skill-run.mjs \
+  --format human context.list
+
+# Only after the user permits local context persistence.
+node skills/igapyon-miku-backlog-api/scripts/backlog-api-skill-run.mjs \
+  --format human context.select --session agent-session-1 \
+  --organization SPACE_NAME --project PROJECT_KEY --persist
+
+# Confirm or clear the selected target explicitly.
+node skills/igapyon-miku-backlog-api/scripts/backlog-api-skill-run.mjs \
+  --format human context.show --session agent-session-1
+node skills/igapyon-miku-backlog-api/scripts/backlog-api-skill-run.mjs \
+  --format human context.clear --session agent-session-1
+```
+
+Use `--context-session agent-session-1` with `issue.search`,
+`issue.list.incomplete`, or `issue.delete.preflight` to load that exact target.
+The runner rejects an additional organization or project argument, and deletion
+preflight stops if the resolved Issue is outside the selected Project.
+
+## Recent Issue History
+
+The Agent may keep a recent Issue only in the conversation by default. Issue
+keys and project association can be sensitive tenant metadata, so local history
+needs separate explicit user permission. The opted-in local record contains
+only organization label, project ID/key/name, Issue ID/key, and timestamp; it
+does not store titles, descriptions, response data, domains, or credentials.
+
+```bash
+# Only after permission to persist Issue history.
+node skills/igapyon-miku-backlog-api/scripts/backlog-api-skill-run.mjs \
+  --format human issue.recent.record --session agent-session-1 \
+  --issue-key PROJECT-123 --persist
+
+node skills/igapyon-miku-backlog-api/scripts/backlog-api-skill-run.mjs \
+  --format human issue.recent.list --session agent-session-1
+
+# Reuse the newest exact target. Preflight rereads and verifies its Project.
+node skills/igapyon-miku-backlog-api/scripts/backlog-api-skill-run.mjs \
+  --format human issue.delete.preflight --recent-issue-session agent-session-1
+
+# Remove this local history when it is no longer needed.
+node skills/igapyon-miku-backlog-api/scripts/backlog-api-skill-run.mjs \
+  --format human issue.recent.clear --session agent-session-1
+```
 
 ## Requirements and Authentication
 
@@ -153,6 +213,141 @@ applied after retrieval, so it can still scan completed issues in the selected
 project. Results show both the retained count and the scanned issue/page
 counts.
 
+### Saving a Reviewed Issue Search Result
+
+Saving is opt-in because Issue metadata can be tenant-sensitive. After the user
+explicitly approves a local file, use `issue.save` with the same bounded search
+conditions and the required `--persist` gate:
+
+```bash
+node --env-file=<agent-workspace>/workplace/backlog.env \
+  skills/igapyon-miku-backlog-api/scripts/backlog-api-skill-run.mjs \
+  --format human issue.save --project MIGTEST01 --incomplete \
+  --updated-within-days 14 --persist
+```
+
+The runner has no arbitrary destination option. It writes one timestamped
+owner-only JSON file under the ignored
+`workplace/backlog-api-skill/saved-issues/` directory and reports its path. The
+file contains only the reviewed result's organization label, project, Issue
+key/status/summary, created/updated timestamps, and counts; it excludes
+credentials, domains, descriptions, comments, attachments, raw responses, and
+verbose diagnostics.
+
+### Reviewed XLSX Export
+
+For an actual Excel workbook, use the two-stage `issue.export.xlsx` route with
+a reviewed local `miku-md2xlsx` runtime. The preflight has the same bounded
+search conditions as `issue.search`; `--persist` explicitly authorizes its
+owner-only pending handoff, not the final file write:
+
+```bash
+node --env-file=<agent-workspace>/workplace/backlog.env \
+  skills/igapyon-miku-backlog-api/scripts/backlog-api-skill-run.mjs \
+  --format human issue.export.xlsx.preflight --project MIGTEST01 --incomplete \
+  --md2xlsx-runtime /absolute/miku-md2xlsx-0.9.5.mjs --persist
+```
+
+Return the preflight preview unchanged. It identifies the selected row count,
+fixed columns, and generated destination under
+`workplace/backlog-api-skill/issue-exports/`. Only after a separate approval,
+apply the single pending export:
+
+```bash
+node skills/igapyon-miku-backlog-api/scripts/backlog-api-skill-run.mjs \
+  --format human issue.export.xlsx.apply --apply
+```
+
+The runner creates a timestamped owner-only Markdown table and `.xlsx` file,
+uses no arbitrary output path or template, and checks the converter checksum
+again before it writes. The fixed export columns are Organization, Project,
+Issue key, Status, Summary, Created, and Updated.
+
+### Creating One Reviewed Issue
+
+The fixed create route resolves Project, Issue type, and priority names before
+showing the precise one-Issue payload. The local handoff contains the reviewed
+content, so `--persist` needs explicit permission; the response to the
+preflight is the separate just-in-time CREATE approval.
+
+```bash
+node --env-file=<agent-workspace>/workplace/backlog.env \
+  skills/igapyon-miku-backlog-api/scripts/backlog-api-skill-run.mjs \
+  --format human issue.create.preflight --project MIGTEST01 \
+  --summary "Review fixed workflow" --issue-type Task --priority Normal \
+  --description "Synthetic example" --persist
+```
+
+After the user approves the exact preview, apply only the pending handoff:
+
+```bash
+node skills/igapyon-miku-backlog-api/scripts/backlog-api-skill-run.mjs \
+  --format human issue.create.apply --apply
+```
+
+The runner requires `READ,CREATE` in the environment, rechecks the bundled
+runtime, calls `add_issue` exactly once with `--allow CREATE`, and never
+retries an unresolved result.
+
+### Updating One Reviewed Issue
+
+Use the fixed two-stage UPDATE route for one Issue's summary, description, due
+date, priority, or assignee. It does not support clearing values or changing
+status, type, categories, versions, milestones, custom fields, or attachments.
+Preflight needs explicit local `--persist` permission because it stores the
+reviewed change set and a compact current-value snapshot in an owner-only
+handoff; its output is the separate just-in-time UPDATE approval.
+
+```bash
+node --env-file=<agent-workspace>/workplace/backlog.env \
+  skills/igapyon-miku-backlog-api/scripts/backlog-api-skill-run.mjs \
+  --format human issue.update.preflight --issue-key MIGTEST01-500 \
+  --summary "Reviewed summary" --priority High --assignee "Example User" --persist
+```
+
+After the user approves that exact preview, apply only the pending handoff:
+
+```bash
+node skills/igapyon-miku-backlog-api/scripts/backlog-api-skill-run.mjs \
+  --format human issue.update.apply --apply
+```
+
+The runner requires `READ,UPDATE`, checks its bundled runtime identity, locks
+the handoff, rereads the Issue, and compares the reviewed snapshot digest before
+calling `update_issue` once with `--allow UPDATE`. A changed Issue becomes a
+`conflict` without sending an update; failures become `unresolved`. Neither is
+automatically retried.
+
+### Read-Only Hygiene and Notification Review
+
+Find potentially neglected Issues without changing Backlog state:
+
+```bash
+node --env-file=<agent-workspace>/workplace/backlog.env \
+  skills/igapyon-miku-backlog-api/scripts/backlog-api-skill-run.mjs \
+  --format human issue.hygiene --project MIGTEST01 \
+  --overdue --stale-days 30 --without-parent
+```
+
+The result is a project-scoped heuristic: `--overdue` means a due date before
+today, `--stale-days` uses a strict calendar cutoff, and `--without-parent`
+means no `parentIssueId` was set (not a broken parent reference). Closed Issues
+are excluded and the output gives the scanned/page counts.
+
+Review the Backlog bell list without making anything read:
+
+```bash
+node --env-file=<agent-workspace>/workplace/backlog.env \
+  skills/igapyon-miku-backlog-api/scripts/backlog-api-skill-run.mjs \
+  --format human notification.triage --unread --limit 50
+```
+
+The pinned contract exposes numeric notification reasons but does not give this
+Skill an authoritative mention mapping, so it reports the raw number and never
+guesses. Marking one notification read needs an exact ID and just-in-time
+`UPDATE` approval; resetting unread count additionally needs the separate broad
+operation confirmation.
+
 ### Issuing a Backlog API Key
 
 In Backlog, open the user menu in the upper-right corner, then select
@@ -199,6 +394,14 @@ printf '{}\n' | node --env-file=<agent-workspace>/workplace/backlog.env \
   skills/igapyon-miku-backlog-api/runtime/miku-backlog-api-0.7.0.mjs \
   call get_space --input - --verbose
 ```
+
+Repository-root `.env` files are intentionally unsupported for Backlog
+credentials. They blur the boundary between the checked-in Skill and the
+credential-owning workspace, and are easy to include accidentally in unrelated
+tooling or commits. Use only the explicitly approved, ignored
+`<agent-workspace>/workplace/backlog.env` path. On rotation or suspected
+exposure, revoke the Backlog key, issue a replacement, and update that local
+file without opening, copying, or committing its value.
 
 ## Build and Test
 

@@ -99,6 +99,30 @@ it automatically. An atomic apply lock prevents the same pending handoff from
 being invoked twice concurrently. A successful delete is recorded as `applied`.
 The route has no routine dry-run or post-delete read-back.
 
+## Fixed Single-Issue Update Runner
+
+The fixed update route is limited to one stable Issue and non-empty replacement
+values for summary, description, due date, priority, and assignee. It excludes
+value clearing, status changes, bulk updates, and all arbitrary payload fields.
+The initial request is not UPDATE approval: `issue.update.preflight` first
+requires explicit local persistence permission, then returns the precise change
+preview and its just-in-time approval question.
+
+Preflight saves one `0600` handoff under
+`workplace/backlog-api-skill/issue-update-handoffs/`. It contains the minimal
+current Issue projection needed for conflict detection, a SHA-256 snapshot
+digest, the reviewed replacement values, stable numeric target ID, Project,
+runtime identity, and fixed update input. It never stores credentials, domains,
+attachments, custom fields, comments, raw responses, or verbose diagnostics.
+
+After the separate approval, apply accepts only `--apply`. It permits exactly
+one pending handoff, verifies runtime identity, acquires an atomic lock, and
+rereads the Issue before the mutation. Any snapshot mismatch changes the record
+to terminal `conflict` and sends no `update_issue` call. Any failed or
+interrupted read or update becomes terminal `unresolved`; neither outcome may
+be retried automatically. Only a matching reread permits one `update_issue`
+call with `--allow UPDATE`.
+
 ## Diagnostics
 
 Preserve upstream authentication, authorization, validation, rate-limit,
