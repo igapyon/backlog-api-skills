@@ -35,6 +35,82 @@ Do not activate from the word `Backlog` alone. Do not activate merely because a
 request mentions issues, projects, milestones, wikis, pull requests,
 notifications, task lists, or backlog grooming.
 
+## Session Working Context
+
+The pinned runtime has no operation that retains a current Backlog Space or
+Project. It accepts an organization and project on each request; multi-Space
+connections are configured through the runtime environment. This Skill adds a
+small, local session-context adapter and never stores domains or API keys.
+
+Keep a working context in the agent conversation by default. Only when the
+user explicitly permits local persistence may the agent use `context.select`
+with `--persist`. This writes only the resolved organization label and project
+ID, key, and name under the workspace's ignored
+`workplace/backlog-api-skill/session-contexts/` directory with owner-only
+permissions. Do not create or replace that file before the permission.
+
+Use the fixed runner in this order when the user wants a persisted session
+context:
+
+1. Run `context.list` to show configured Space labels only. It never prints
+   domains or API keys.
+2. Resolve and explicitly select a Space and Project:
+
+   ```bash
+   node <skill-directory>/scripts/backlog-api-skill-run.mjs \
+     --format human context.select --session SESSION --organization NAME \
+     --project PROJECT_KEY|PROJECT_ID --persist
+   ```
+
+   `--organization` may be omitted for the runtime's default connection.
+3. Use `context.show --session SESSION` whenever the current target must be
+   displayed. Use `context.clear --session SESSION` to remove it explicitly.
+4. Scope fixed Issue search and single-Issue deletion preflight routes with
+   `--context-session SESSION`. Do not combine it with `--organization` or
+   `--project`: the runner loads the saved target instead. Deletion preflight
+   verifies that the resolved Issue belongs to the selected Project and names
+   the resolved organization and project in its final mutation prompt.
+
+For a non-persisted conversation context, display the resolved organization and
+project before a mutation and pass them explicitly to the applicable runner or
+runtime call. Clear that conversational context when the user asks to switch
+or clear it; never treat a prior Space or Project as implicit after a clear.
+
+## Recent Issue History
+
+The Agent may remember the current or previously viewed Issue within its
+conversation by default. Do not write such history locally unless the user
+explicitly permits it: Issue keys and project association can be tenant
+metadata. The local runner stores only organization label, project ID/key/name,
+Issue ID/key, and timestamp—never a title, description, response body, domain,
+or API key.
+
+After the user permits a local history record, resolve and record one exact
+Issue with:
+
+```bash
+node <skill-directory>/scripts/backlog-api-skill-run.mjs \
+  --format human issue.recent.record --session SESSION \
+  --issue-key PROJ-123 [--organization NAME] --persist
+```
+
+Use `issue.recent.list --session SESSION` to show the reusable targets, and
+`issue.recent.clear --session SESSION` to erase that session's history. The
+newest record can supply an exact target to the fixed deletion preflight:
+
+```bash
+node <skill-directory>/scripts/backlog-api-skill-run.mjs \
+  --format human issue.delete.preflight --recent-issue-session SESSION
+```
+
+The runner reads the Issue again, checks that it remains in the recorded
+Project, and includes the resolved Space, Project, Issue key, and current title
+in the final mutation prompt. Do not combine `--recent-issue-session` with a
+different Issue key, organization, or working-context session. For references
+such as “the current Issue” without approved local history, show the resolved
+Issue from the conversation before reuse or mutation and ask for a stable key
+if it is not unambiguous.
+
 ## Fixed Single-Issue Deletion Route
 
 When the user's original request explicitly names one Backlog issue key or ID
@@ -133,6 +209,163 @@ agent-assembled pagination, raw `get_issues` calls, or temporary JSON. Extend
 the `issue.search` input contract when adding a new supported condition rather
 than adding a separate MJS runner.
 
+## Opt-In Issue Search Save
+
+Only when the user explicitly asks to save the selected search result and
+approves local persistence, use the fixed `issue.save` workflow. It accepts the
+same bounded search conditions as `issue.search`, plus `--persist`; it has no
+user-selectable output path:
+
+```bash
+node --env-file=<agent-workspace>/workplace/backlog.env \
+  <skill-directory>/scripts/backlog-api-skill-run.mjs \
+  --format human issue.save --project PROJECT_KEY --incomplete \
+  --updated-within-days 14 --persist
+```
+
+Before the command, state that the selected Issue key, status, summary, and
+created/updated timestamps will be written to the ignored owner-only
+`<agent-workspace>/workplace/backlog-api-skill/saved-issues/` directory. The
+runner creates one timestamped JSON file with mode `0600`; its parent directory
+has mode `0700`. It never saves API keys, domains, raw response bodies,
+descriptions, comments, attachments, or verbose diagnostics. Do not invoke the
+route without the user’s explicit permission and `--persist`, and return its
+saved destination exactly as reported.
+
+## Reviewed XLSX Issue Export
+
+Use the fixed two-stage XLSX route only when the user explicitly asks for an
+XLSX export through `miku-md2xlsx`. The first command runs the same bounded
+Issue search and prepares an owner-only pending handoff. It requires an
+explicitly supplied absolute path to a locally available `miku-md2xlsx-X.Y.Z.mjs`
+runtime and the user's `--persist` permission because the selected Issue data
+is retained in that handoff for the final review:
+
+```bash
+node --env-file=<agent-workspace>/workplace/backlog.env \
+  <skill-directory>/scripts/backlog-api-skill-run.mjs \
+  --format human issue.export.xlsx.preflight --project PROJECT_KEY \
+  --incomplete --md2xlsx-runtime /absolute/miku-md2xlsx-X.Y.Z.mjs --persist
+```
+
+Return the preflight output unchanged. It lists the exact row count, fixed
+columns, and generated `workplace/backlog-api-skill/issue-exports/` destination.
+Only after a separate affirmative reply, use the same workspace to apply the
+one pending export:
+
+```bash
+node <skill-directory>/scripts/backlog-api-skill-run.mjs \
+  --format human issue.export.xlsx.apply --apply
+```
+
+The runner writes an owner-only Markdown table and `.xlsx` workbook with a
+generated timestamp/UUID filename. It calls the reviewed `miku-md2xlsx` runtime
+with only the Markdown input, `--out`, and Project-key worksheet title. It
+never accepts an arbitrary destination or template, never saves API keys,
+domains, descriptions, comments, attachments, raw responses, or verbose
+diagnostics, and stops if the converter checksum changes after preview.
+
+## Fixed Single-Issue Create Route
+
+For one new Issue with a resolved Project, type, and priority, use the fixed
+create preflight. It requires `READ,CREATE` in the environment and explicit
+`--persist` permission because the reviewed payload is stored in an owner-only
+pending handoff before mutation approval:
+
+```bash
+node --env-file=<agent-workspace>/workplace/backlog.env \
+  <skill-directory>/scripts/backlog-api-skill-run.mjs \
+  --format human issue.create.preflight --project PROJECT_KEY \
+  --summary TEXT --issue-type NAME|ID --priority NAME|ID \
+  [--description TEXT] --persist
+```
+
+Return the preflight question unchanged. It resolves names to IDs and presents
+the organization, Project, type, priority, summary, and optional description.
+Only after the user's just-in-time affirmative reply, use the same workspace:
+
+```bash
+node <skill-directory>/scripts/backlog-api-skill-run.mjs \
+  --format human issue.create.apply --apply
+```
+
+The apply route finds exactly one pending handoff, rechecks the bundled runtime
+identity, and calls `add_issue` exactly once with `--allow CREATE`. A failed or
+interrupted attempt becomes `unresolved` and must not be retried automatically.
+Do not add fields or replace this fixed route with a direct runtime call.
+
+## Fixed Single-Issue Update Route
+
+For one exact Issue, use the fixed update route when changing one or more of
+`summary`, `description`, `dueDate`, `priority`, or `assignee`. It requires
+`READ,UPDATE` in the environment and explicit `--persist` permission because a
+compact current-value snapshot, the reviewed changes, and the fixed input are
+stored in one owner-only pending handoff. The route does not clear fields and
+does not support status, type, category, version, milestone, custom-field,
+attachment, notification, or arbitrary JSON updates.
+
+```bash
+node --env-file=<agent-workspace>/workplace/backlog.env \
+  <skill-directory>/scripts/backlog-api-skill-run.mjs \
+  --format human issue.update.preflight --issue-key PROJ-123 \
+  [--organization NAME] [--summary TEXT] [--description TEXT] \
+  [--due-date YYYY-MM-DD] [--priority NAME|ID] [--assignee NAME|ID] --persist
+```
+
+The preflight reads the exact Issue, resolves the Project and any priority or
+assignee names, rejects an empty change set, then returns the reviewed change
+preview unchanged. Its question is the required just-in-time UPDATE approval.
+After a separate affirmative reply, invoke only:
+
+```bash
+node <skill-directory>/scripts/backlog-api-skill-run.mjs \
+  --format human issue.update.apply --apply
+```
+
+Apply accepts no target or field overrides. It requires exactly one pending
+handoff, checks the runtime identity, obtains an atomic lock, rereads the Issue,
+and compares its canonical snapshot digest immediately before `update_issue`.
+If the Issue changed after review, it records `conflict`, sends no mutation, and
+must not be retried automatically. A failed or interrupted remote call becomes
+`unresolved`; a successful call is recorded as `applied`.
+
+## Read-Only Issue Hygiene and Notification Triage
+
+Use `issue.hygiene` only for a resolved Project and at least one explicit
+condition. It reports non-closed Issues that meet any selected condition; it
+does not update, comment on, assign, or close them:
+
+```bash
+node --env-file=<agent-workspace>/workplace/backlog.env \
+  <skill-directory>/scripts/backlog-api-skill-run.mjs \
+  --format human issue.hygiene --project PROJECT_KEY \
+  --overdue --stale-days 30 --without-parent
+```
+
+`--overdue` means a due date before today; `--stale-days DAYS` means an updated
+date strictly older than that calendar-day threshold; `--without-parent` means
+that the Issue has no `parentIssueId`. It cannot identify a broken parent
+reference. The runner scans the selected Project in 100-Issue pages, reports
+scanned/page counts, and retains only key, status, summary, due date, and
+updated date in its result.
+
+Use `notification.triage` to inspect the Backlog bell list, optionally for
+unread notifications only. It returns at most 100 latest notifications and
+shows raw numeric `reason` values without calling any one a “mention”:
+
+```bash
+node --env-file=<agent-workspace>/workplace/backlog.env \
+  <skill-directory>/scripts/backlog-api-skill-run.mjs \
+  --format human notification.triage --unread --limit 50
+```
+
+The pinned runtime does not provide a reason-code mapping that this Skill can
+use to infer personal mentions, so retain unknown values as numbers. Neither
+route changes notification state. Marking one notification read is an `UPDATE`
+operation and resetting unread count is a broad `UPDATE` operation; use the
+generic mutation workflow and obtain the required just-in-time approval (and,
+for reset, the second destructive confirmation) before either action.
+
 ## Required First Checks for Other Runtime Operations
 
 1. Read [index.json](index.json) first as the generated discovery index.
@@ -173,7 +406,8 @@ When the user explicitly requests local credential storage, follow
 `<agent-workspace>/workplace/backlog.env` convention. Never inspect or print
 its values; pass the resolved file path explicitly to Node with `--env-file`
 immediately before the runtime path. The runtime itself does not automatically
-load it.
+load it. Do not use a repository-root `.env`, `.env.local`, or similar dotfile
+for Backlog credentials; those paths are not a supported credential boundary.
 
 ## API Key Setup Guidance
 

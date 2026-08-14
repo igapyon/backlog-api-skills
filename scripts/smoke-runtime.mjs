@@ -63,8 +63,24 @@ const skillWorkflows = JSON.parse(
 assert.deepEqual(
   skillWorkflows.workflows.map((workflow) => workflow.id),
   [
+    "context.list",
+    "context.select",
+    "context.show",
+    "context.clear",
+    "issue.recent.record",
+    "issue.recent.list",
+    "issue.recent.clear",
     "issue.search",
+    "issue.save",
+    "issue.export.xlsx.preflight",
+    "issue.export.xlsx.apply",
+    "issue.create.preflight",
+    "issue.create.apply",
+    "issue.update.preflight",
+    "issue.update.apply",
     "issue.list.incomplete",
+    "issue.hygiene",
+    "notification.triage",
     "issue.delete.preflight",
     "issue.delete.handoff.apply"
   ]

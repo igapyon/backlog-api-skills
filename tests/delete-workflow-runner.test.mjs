@@ -57,6 +57,55 @@ test("workflow manifest exposes common issue-search, issue-list, and issue-delet
     })),
     [
       {
+        id: "context.list",
+        mutationLevel: "local-readonly",
+        approvalGate: "none",
+        requiredParameters: [],
+        runtimeReferences: []
+      },
+      {
+        id: "context.select",
+        mutationLevel: "local-persist",
+        approvalGate: "user-permission-required",
+        requiredParameters: ["session", "project", "--persist"],
+        runtimeReferences: ["get_project"]
+      },
+      {
+        id: "context.show",
+        mutationLevel: "local-readonly",
+        approvalGate: "none",
+        requiredParameters: ["session"],
+        runtimeReferences: []
+      },
+      {
+        id: "context.clear",
+        mutationLevel: "local-delete",
+        approvalGate: "explicit-clear",
+        requiredParameters: ["session"],
+        runtimeReferences: []
+      },
+      {
+        id: "issue.recent.record",
+        mutationLevel: "local-persist",
+        approvalGate: "user-permission-required",
+        requiredParameters: ["session", "issue-key or issue-id", "--persist"],
+        runtimeReferences: ["get_issue", "get_project"]
+      },
+      {
+        id: "issue.recent.list",
+        mutationLevel: "local-readonly",
+        approvalGate: "none",
+        requiredParameters: ["session"],
+        runtimeReferences: []
+      },
+      {
+        id: "issue.recent.clear",
+        mutationLevel: "local-delete",
+        approvalGate: "explicit-clear",
+        requiredParameters: ["session"],
+        runtimeReferences: []
+      },
+      {
         id: "issue.search",
         mutationLevel: "readonly",
         approvalGate: "none",
@@ -73,11 +122,92 @@ test("workflow manifest exposes common issue-search, issue-list, and issue-delet
         ]
       },
       {
+        id: "issue.save",
+        mutationLevel: "local-persist",
+        approvalGate: "user-permission-required",
+        requiredParameters: ["project", "at least one supported search condition", "--persist"],
+        runtimeReferences: [
+          "get_project",
+          "get_project_users",
+          "get_categories",
+          "get_version_milestone_list",
+          "get_priorities",
+          "get_resolutions",
+          "get_myself",
+          "get_issues"
+        ]
+      },
+      {
+        id: "issue.export.xlsx.preflight",
+        mutationLevel: "local-preflight",
+        approvalGate: "export-preview",
+        requiredParameters: ["project", "at least one supported search condition", "--persist", "--md2xlsx-runtime"],
+        runtimeReferences: [
+          "get_project",
+          "get_project_users",
+          "get_categories",
+          "get_version_milestone_list",
+          "get_priorities",
+          "get_resolutions",
+          "get_myself",
+          "get_issues"
+        ]
+      },
+      {
+        id: "issue.export.xlsx.apply",
+        mutationLevel: "local-write",
+        approvalGate: "apply",
+        requiredParameters: ["--apply"],
+        runtimeReferences: []
+      },
+      {
+        id: "issue.create.preflight",
+        mutationLevel: "local-preflight",
+        approvalGate: "create-preview",
+        requiredParameters: ["project", "summary", "issue-type", "priority", "--persist"],
+        runtimeReferences: ["get_project", "get_issue_types", "get_priorities"]
+      },
+      {
+        id: "issue.create.apply",
+        mutationLevel: "remote",
+        approvalGate: "apply",
+        requiredParameters: ["--apply"],
+        runtimeReferences: ["add_issue"]
+      },
+      {
+        id: "issue.update.preflight",
+        mutationLevel: "local-preflight",
+        approvalGate: "update-preview",
+        requiredParameters: ["issue-key or issue-id", "at least one supported fixed field", "--persist"],
+        runtimeReferences: ["get_issue", "get_project", "get_priorities", "get_project_users"]
+      },
+      {
+        id: "issue.update.apply",
+        mutationLevel: "remote",
+        approvalGate: "apply",
+        requiredParameters: ["--apply"],
+        runtimeReferences: ["get_issue", "update_issue"]
+      },
+      {
         id: "issue.list.incomplete",
         mutationLevel: "readonly",
         approvalGate: "none",
         requiredParameters: ["project"],
         runtimeReferences: ["get_project", "get_issues"]
+      },
+      {
+        id: "issue.hygiene",
+        mutationLevel: "readonly",
+        approvalGate: "none",
+        requiredParameters: ["project", "at least one hygiene condition"],
+        runtimeReferences: ["get_project", "get_issues"]
+      },
+      {
+        id: "notification.triage",
+        mutationLevel: "readonly",
+        approvalGate: "none",
+        requiredParameters: [],
+        runtimeReferences: ["get_notifications"]
       },
       {
         id: "issue.delete.preflight",
@@ -95,6 +225,685 @@ test("workflow manifest exposes common issue-search, issue-list, and issue-delet
       }
     ]
   );
+});
+
+test("Issue save requires explicit persistence and writes a compact owner-only result", () => {
+  const workspace = createWorkspace();
+  const savedIssueRoot = path.join(workspace.cwd, "saved-issues");
+  const dependencies = {
+    cwd: workspace.cwd,
+    savedIssueRoot,
+    environment: { BACKLOG_API_ALLOWED_PERMISSIONS: "READ" },
+    runtime: RUNTIME,
+    now: () => new Date("2026-08-14T00:00:00.000Z"),
+    invokeRuntime: ({ operation }) => {
+      if (operation === "get_project") {
+        return {
+          operation,
+          success: true,
+          result: { id: 8192, projectKey: "MIGTEST01", name: "Migration test" },
+          diagnostics: []
+        };
+      }
+      if (operation === "get_issues") {
+        return {
+          operation,
+          success: true,
+          result: [{
+            issueKey: "MIGTEST01-401",
+            summary: "Reviewed result",
+            status: { id: 1, name: "未対応" },
+            created: "2026-08-01T00:00:00Z",
+            updated: "2026-08-13T00:00:00Z"
+          }],
+          diagnostics: []
+        };
+      }
+      throw new Error(`unexpected operation: ${operation}`);
+    }
+  };
+
+  try {
+    assert.throws(
+      () => runWorkflow("issue.save", ["--project", "MIGTEST01", "--incomplete"], dependencies),
+      (error) => error instanceof BacklogSkillRunnerError
+        && error.code === "SAVE_PERSIST_PERMISSION_REQUIRED"
+    );
+    assert.equal(fs.existsSync(savedIssueRoot), false);
+
+    const result = runWorkflow(
+      "issue.save",
+      ["--project", "MIGTEST01", "--incomplete", "--persist"],
+      dependencies
+    );
+    assert.equal(result.workflow, "issue.save");
+    assert.equal(result.savedIssueCount, 1);
+    assert.match(result.savePath, /^saved-issues\/issues-20260814T000000Z-[a-f0-9-]+\.json$/);
+    const savedPath = path.join(workspace.cwd, result.savePath);
+    assert.equal(fs.statSync(savedIssueRoot).mode & 0o777, 0o700);
+    assert.equal(fs.statSync(savedPath).mode & 0o777, 0o600);
+    const saved = JSON.parse(fs.readFileSync(savedPath, "utf8"));
+    assert.deepEqual(saved, {
+      schemaVersion: "backlog-api-skills.saved-issue-result/v1",
+      savedAt: "2026-08-14T00:00:00.000Z",
+      purpose: "issue-search-result",
+      organization: "default",
+      project: { id: 8192, key: "MIGTEST01", name: "Migration test" },
+      issueCount: 1,
+      scannedIssueCount: 1,
+      pageCount: 1,
+      issues: [{
+        issueKey: "MIGTEST01-401",
+        summary: "Reviewed result",
+        status: "未対応",
+        created: "2026-08-01T00:00:00Z",
+        updated: "2026-08-13T00:00:00Z"
+      }]
+    });
+    assert.doesNotMatch(fs.readFileSync(savedPath, "utf8"), /API_KEY|domain|description|comment/i);
+  } finally {
+    workspace.cleanup();
+  }
+});
+
+test("XLSX export previews a compact Issue selection before one owner-only conversion", () => {
+  const workspace = createWorkspace();
+  const converter = path.join(workspace.cwd, "miku-md2xlsx-0.9.5.mjs");
+  fs.writeFileSync(converter, "// synthetic converter runtime\n", "utf8");
+  const dependencies = {
+    cwd: workspace.cwd,
+    xlsxExportHandoffRoot: path.join(workspace.cwd, "xlsx-handoffs"),
+    xlsxExportRoot: path.join(workspace.cwd, "issue-exports"),
+    environment: { BACKLOG_API_ALLOWED_PERMISSIONS: "READ" },
+    runtime: RUNTIME,
+    now: fixedNow(),
+    createXlsxExportId: () => createId("a"),
+    invokeRuntime: ({ operation }) => {
+      if (operation === "get_project") {
+        return {
+          operation,
+          success: true,
+          result: { id: 8192, projectKey: "MIGTEST01", name: "Migration test" },
+          diagnostics: []
+        };
+      }
+      if (operation === "get_issues") {
+        return {
+          operation,
+          success: true,
+          result: [{
+            issueKey: "MIGTEST01-401",
+            summary: "Reviewed export result",
+            status: { id: 1, name: "未対応" },
+            created: "2026-08-01T00:00:00Z",
+            updated: "2026-08-13T00:00:00Z"
+          }],
+          diagnostics: []
+        };
+      }
+      throw new Error(`unexpected operation: ${operation}`);
+    },
+    spawnMd2xlsx: (_command, argumentsList) => {
+      assert.equal(argumentsList[0], converter);
+      assert.equal(argumentsList[2], "--out");
+      fs.writeFileSync(argumentsList[3], "synthetic xlsx", "utf8");
+      return { status: 0, stdout: "", stderr: "" };
+    }
+  };
+
+  try {
+    assert.throws(
+      () => runWorkflow(
+        "issue.export.xlsx.preflight",
+        ["--project", "MIGTEST01", "--incomplete", "--md2xlsx-runtime", converter],
+        dependencies
+      ),
+      (error) => error instanceof BacklogSkillRunnerError
+        && error.code === "XLSX_EXPORT_PERSIST_PERMISSION_REQUIRED"
+    );
+
+    const preflight = runWorkflow(
+      "issue.export.xlsx.preflight",
+      ["--project", "MIGTEST01", "--incomplete", "--md2xlsx-runtime", converter, "--persist"],
+      dependencies
+    );
+    assert.equal(preflight.status, "preflight-ok");
+    assert.equal(preflight.issueCount, 1);
+    assert.deepEqual(preflight.columns, [
+      "Organization", "Project", "Issue key", "Status", "Summary", "Created", "Updated"
+    ]);
+    assert.match(preflight.humanOutput, /この内容でローカル XLSX を作成しますか？/);
+    assert.equal(fs.existsSync(path.join(workspace.cwd, preflight.xlsxPath)), false);
+
+    const applied = runWorkflow("issue.export.xlsx.apply", ["--apply"], dependencies);
+    const xlsxPath = path.join(workspace.cwd, applied.xlsxPath);
+    const markdownPath = path.join(workspace.cwd, applied.markdownPath);
+    assert.equal(applied.status, "success");
+    assert.equal(fs.statSync(path.dirname(xlsxPath)).mode & 0o777, 0o700);
+    assert.equal(fs.statSync(xlsxPath).mode & 0o777, 0o600);
+    assert.equal(fs.statSync(markdownPath).mode & 0o777, 0o600);
+    assert.match(fs.readFileSync(markdownPath, "utf8"), /\| MIGTEST01 \| MIGTEST01-401 \| 未対応 \| Reviewed export result/);
+    assert.doesNotMatch(fs.readFileSync(markdownPath, "utf8"), /API_KEY|description|comment/i);
+    const handoff = JSON.parse(fs.readFileSync(path.join(workspace.cwd, preflight.handoffPath), "utf8"));
+    assert.equal(handoff.status, "applied");
+  } finally {
+    workspace.cleanup();
+  }
+});
+
+test("Issue creation resolves names, previews the payload, and applies one reviewed handoff", () => {
+  const workspace = createWorkspace();
+  const calls = [];
+  const dependencies = {
+    cwd: workspace.cwd,
+    issueCreateHandoffRoot: path.join(workspace.cwd, "create-handoffs"),
+    environment: { BACKLOG_API_ALLOWED_PERMISSIONS: "READ,CREATE" },
+    runtime: RUNTIME,
+    now: fixedNow(),
+    createIssueCreateId: () => createId("b"),
+    invokeRuntime: ({ operation, input, callOptions }) => {
+      calls.push({ operation, input, callOptions });
+      if (operation === "get_project") {
+        return {
+          operation,
+          success: true,
+          result: { id: 8192, projectKey: "MIGTEST01", name: "Migration test" },
+          diagnostics: []
+        };
+      }
+      if (operation === "get_issue_types") {
+        return { operation, success: true, result: [{ id: 31, name: "Task" }], diagnostics: [] };
+      }
+      if (operation === "get_priorities") {
+        return { operation, success: true, result: [{ id: 3, name: "Normal" }], diagnostics: [] };
+      }
+      if (operation === "add_issue") {
+        return {
+          operation,
+          success: true,
+          result: { id: 36038500, projectId: 8192, issueKey: "MIGTEST01-500", summary: "Create workflow" },
+          diagnostics: []
+        };
+      }
+      throw new Error(`unexpected operation: ${operation}`);
+    }
+  };
+
+  try {
+    assert.throws(
+      () => runWorkflow(
+        "issue.create.preflight",
+        ["--project", "MIGTEST01", "--summary", "Create workflow", "--issue-type", "Task", "--priority", "Normal"],
+        dependencies
+      ),
+      (error) => error instanceof BacklogSkillRunnerError
+        && error.code === "CREATE_HANDOFF_PERSIST_PERMISSION_REQUIRED"
+    );
+    assert.equal(calls.length, 0);
+
+    const preflight = runWorkflow(
+      "issue.create.preflight",
+      [
+        "--organization", "ALPHA",
+        "--project", "MIGTEST01",
+        "--summary", "Create workflow",
+        "--issue-type", "Task",
+        "--priority", "Normal",
+        "--description", "Explicit reviewed description",
+        "--persist"
+      ],
+      dependencies
+    );
+    assert.equal(preflight.status, "preflight-ok");
+    assert.match(preflight.humanOutput, /作成しますか？/);
+    assert.equal(fs.statSync(path.join(workspace.cwd, preflight.handoffPath)).mode & 0o777, 0o600);
+    assert.deepEqual(calls, [
+      {
+        operation: "get_project",
+        input: { organization: "ALPHA", projectKey: "MIGTEST01", fields: "{ id projectKey name }" },
+        callOptions: ["--verbose"]
+      },
+      {
+        operation: "get_issue_types",
+        input: { organization: "ALPHA", projectId: 8192, fields: "{ id name }" },
+        callOptions: ["--verbose"]
+      },
+      {
+        operation: "get_priorities",
+        input: { organization: "ALPHA", fields: "{ id name }" },
+        callOptions: ["--verbose"]
+      }
+    ]);
+
+    const applied = runWorkflow("issue.create.apply", ["--apply"], dependencies);
+    assert.equal(applied.status, "success");
+    assert.equal(applied.mutationInvoked, true);
+    assert.deepEqual(applied.issue, { id: 36038500, issueKey: "MIGTEST01-500", summary: "Create workflow" });
+    assert.deepEqual(calls[3], {
+      operation: "add_issue",
+      input: {
+        organization: "ALPHA",
+        projectId: 8192,
+        summary: "Create workflow",
+        issueTypeId: 31,
+        priorityId: 3,
+        description: "Explicit reviewed description",
+        fields: "{ id projectId issueKey summary }"
+      },
+      callOptions: ["--allow", "CREATE", "--verbose"]
+    });
+    assert.equal(JSON.parse(fs.readFileSync(path.join(workspace.cwd, preflight.handoffPath), "utf8")).status, "applied");
+  } finally {
+    workspace.cleanup();
+  }
+});
+
+test("Issue update previews one fixed change set, rereads its snapshot, and applies it once", () => {
+  const workspace = createWorkspace();
+  const calls = [];
+  const before = {
+    id: ISSUE.id,
+    projectId: ISSUE.projectId,
+    issueKey: ISSUE.issueKey,
+    summary: "Original summary",
+    description: "Original description",
+    dueDate: "2026-08-20",
+    priority: { id: 3, name: "Normal" },
+    assignee: { id: 100, name: "Alice" },
+    updated: "2026-08-14T00:00:00Z"
+  };
+  const after = {
+    ...before,
+    summary: "Reviewed summary",
+    description: "Reviewed description",
+    dueDate: "2026-08-31",
+    priority: { id: 2, name: "High" },
+    assignee: { id: 101, name: "Bob" },
+    updated: "2026-08-14T00:01:00Z"
+  };
+  let issueReadCount = 0;
+  const dependencies = {
+    cwd: workspace.cwd,
+    issueUpdateHandoffRoot: path.join(workspace.cwd, "update-handoffs"),
+    environment: { BACKLOG_API_ALLOWED_PERMISSIONS: "READ,UPDATE" },
+    runtime: RUNTIME,
+    now: fixedNow(),
+    createIssueUpdateId: () => createId("c"),
+    invokeRuntime: ({ operation, input, callOptions }) => {
+      calls.push({ operation, input, callOptions });
+      if (operation === "get_issue") {
+        issueReadCount += 1;
+        return { operation, success: true, result: issueReadCount === 1 ? before : before, diagnostics: [] };
+      }
+      if (operation === "get_project") {
+        return {
+          operation,
+          success: true,
+          result: { id: 8192, projectKey: "MIGTEST01", name: "Migration test" },
+          diagnostics: []
+        };
+      }
+      if (operation === "get_priorities") {
+        return { operation, success: true, result: [{ id: 2, name: "High" }], diagnostics: [] };
+      }
+      if (operation === "get_project_users") {
+        return { operation, success: true, result: [{ id: 101, name: "Bob" }], diagnostics: [] };
+      }
+      if (operation === "update_issue") {
+        return { operation, success: true, result: after, diagnostics: [] };
+      }
+      throw new Error(`unexpected operation: ${operation}`);
+    }
+  };
+
+  try {
+    assert.throws(
+      () => runWorkflow(
+        "issue.update.preflight",
+        ["--issue-key", ISSUE.issueKey, "--summary", "Reviewed summary"],
+        dependencies
+      ),
+      (error) => error instanceof BacklogSkillRunnerError
+        && error.code === "UPDATE_HANDOFF_PERSIST_PERMISSION_REQUIRED"
+    );
+    assert.equal(calls.length, 0);
+
+    const preflight = runWorkflow(
+      "issue.update.preflight",
+      [
+        "--organization", "ALPHA",
+        "--issue-key", ISSUE.issueKey,
+        "--summary", "Reviewed summary",
+        "--description", "Reviewed description",
+        "--due-date", "2026-08-31",
+        "--priority", "2",
+        "--assignee", "Bob",
+        "--persist"
+      ],
+      dependencies
+    );
+    assert.equal(preflight.status, "preflight-ok");
+    assert.equal(preflight.changes.length, 5);
+    assert.match(preflight.humanOutput, /実行しますか？/);
+    assert.match(preflight.snapshotSha256, /^[a-f0-9]{64}$/);
+    assert.equal(fs.statSync(path.join(workspace.cwd, preflight.handoffPath)).mode & 0o777, 0o600);
+    assert.deepEqual(calls.slice(0, 3), [
+      {
+        operation: "get_issue",
+        input: { organization: "ALPHA", issueKey: ISSUE.issueKey, fields: "{ id projectId issueKey summary description dueDate priority { id name } assignee { id name } updated }" },
+        callOptions: ["--verbose"]
+      },
+      {
+        operation: "get_project",
+        input: { organization: "ALPHA", projectId: 8192, fields: "{ id projectKey name }" },
+        callOptions: ["--verbose"]
+      },
+      {
+        operation: "get_project_users",
+        input: { organization: "ALPHA", projectId: 8192, fields: "{ id name }" },
+        callOptions: ["--verbose"]
+      }
+    ]);
+
+    const applied = runWorkflow("issue.update.apply", ["--apply"], dependencies);
+    assert.equal(applied.status, "success");
+    assert.equal(applied.mutationInvoked, true);
+    assert.deepEqual(applied.issue, { id: ISSUE.id, issueKey: ISSUE.issueKey, summary: "Reviewed summary" });
+    assert.deepEqual(calls[3], {
+      operation: "get_issue",
+      input: {
+        issueId: ISSUE.id,
+        organization: "ALPHA",
+        fields: "{ id projectId issueKey summary description dueDate priority { id name } assignee { id name } updated }"
+      },
+      callOptions: ["--verbose"]
+    });
+    assert.deepEqual(calls[4], {
+      operation: "update_issue",
+      input: {
+        organization: "ALPHA",
+        issueId: ISSUE.id,
+        summary: "Reviewed summary",
+        description: "Reviewed description",
+        dueDate: "2026-08-31",
+        priorityId: 2,
+        assigneeId: 101,
+        fields: "{ id projectId issueKey summary description dueDate priority { id name } assignee { id name } updated }"
+      },
+      callOptions: ["--allow", "UPDATE", "--verbose"]
+    });
+    assert.equal(JSON.parse(fs.readFileSync(path.join(workspace.cwd, preflight.handoffPath), "utf8")).status, "applied");
+  } finally {
+    workspace.cleanup();
+  }
+});
+
+test("Issue update stops before mutation when its reviewed snapshot changed", () => {
+  const workspace = createWorkspace();
+  const before = {
+    id: ISSUE.id,
+    projectId: ISSUE.projectId,
+    issueKey: ISSUE.issueKey,
+    summary: "Original summary",
+    description: "Original description",
+    dueDate: null,
+    priority: { id: 3, name: "Normal" },
+    assignee: null,
+    updated: "2026-08-14T00:00:00Z"
+  };
+  const changed = { ...before, updated: "2026-08-14T00:05:00Z" };
+  const calls = [];
+  let issueReadCount = 0;
+  const dependencies = {
+    cwd: workspace.cwd,
+    issueUpdateHandoffRoot: path.join(workspace.cwd, "update-handoffs"),
+    environment: { BACKLOG_API_ALLOWED_PERMISSIONS: "READ,UPDATE" },
+    runtime: RUNTIME,
+    now: fixedNow(),
+    createIssueUpdateId: () => createId("d"),
+    invokeRuntime: ({ operation, input, callOptions }) => {
+      calls.push({ operation, input, callOptions });
+      if (operation === "get_issue") {
+        issueReadCount += 1;
+        return { operation, success: true, result: issueReadCount === 1 ? before : changed, diagnostics: [] };
+      }
+      if (operation === "get_project") {
+        return {
+          operation,
+          success: true,
+          result: { id: 8192, projectKey: "MIGTEST01", name: "Migration test" },
+          diagnostics: []
+        };
+      }
+      throw new Error(`unexpected operation: ${operation}`);
+    }
+  };
+
+  try {
+    const preflight = runWorkflow(
+      "issue.update.preflight",
+      ["--issue-key", ISSUE.issueKey, "--summary", "Reviewed summary", "--persist"],
+      dependencies
+    );
+    assert.throws(
+      () => runWorkflow("issue.update.apply", ["--apply"], dependencies),
+      (error) => error instanceof BacklogSkillRunnerError && error.code === "ISSUE_UPDATE_SNAPSHOT_CONFLICT"
+    );
+    assert.equal(calls.some((call) => call.operation === "update_issue"), false);
+    assert.equal(JSON.parse(fs.readFileSync(path.join(workspace.cwd, preflight.handoffPath), "utf8")).status, "conflict");
+    assert.throws(
+      () => runWorkflow("issue.update.apply", ["--apply"], dependencies),
+      (error) => error instanceof BacklogSkillRunnerError && error.code === "PENDING_ISSUE_UPDATE_HANDOFF_NOT_FOUND"
+    );
+  } finally {
+    workspace.cleanup();
+  }
+});
+
+test("Issue update rejects a pre-existing apply lock and does not clear supported fields", () => {
+  const workspace = createWorkspace();
+  const before = {
+    id: ISSUE.id,
+    projectId: ISSUE.projectId,
+    issueKey: ISSUE.issueKey,
+    summary: "Original summary",
+    description: "Original description",
+    dueDate: null,
+    priority: { id: 3, name: "Normal" },
+    assignee: null,
+    updated: "2026-08-14T00:00:00Z"
+  };
+  let calls = 0;
+  const dependencies = {
+    cwd: workspace.cwd,
+    issueUpdateHandoffRoot: path.join(workspace.cwd, "update-handoffs"),
+    environment: { BACKLOG_API_ALLOWED_PERMISSIONS: "READ,UPDATE" },
+    runtime: RUNTIME,
+    now: fixedNow(),
+    createIssueUpdateId: () => createId("e"),
+    invokeRuntime: ({ operation }) => {
+      calls += 1;
+      if (operation === "get_issue") return { operation, success: true, result: before, diagnostics: [] };
+      if (operation === "get_project") {
+        return { operation, success: true, result: { id: 8192, projectKey: "MIGTEST01", name: "Migration test" }, diagnostics: [] };
+      }
+      throw new Error(`unexpected operation: ${operation}`);
+    }
+  };
+
+  try {
+    assert.throws(
+      () => runWorkflow(
+        "issue.update.preflight",
+        ["--issue-key", ISSUE.issueKey, "--description", "", "--persist"],
+        dependencies
+      ),
+      (error) => error instanceof BacklogSkillRunnerError && error.code === "INVALID_OPTION_VALUE"
+    );
+    assert.equal(calls, 0);
+    const preflight = runWorkflow(
+      "issue.update.preflight",
+      ["--issue-key", ISSUE.issueKey, "--summary", "Reviewed summary", "--persist"],
+      dependencies
+    );
+    const handoffPath = path.join(workspace.cwd, preflight.handoffPath);
+    fs.writeFileSync(`${handoffPath}.apply.lock`, "", { mode: 0o600 });
+    assert.throws(
+      () => runWorkflow("issue.update.apply", ["--apply"], dependencies),
+      (error) => error instanceof BacklogSkillRunnerError && error.code === "ISSUE_UPDATE_HANDOFF_APPLY_IN_PROGRESS"
+    );
+    assert.equal(calls, 2);
+    assert.equal(JSON.parse(fs.readFileSync(handoffPath, "utf8")).status, "pending");
+  } finally {
+    workspace.cleanup();
+  }
+});
+
+test("Issue hygiene is read-only and reports only explicit heuristic reasons", () => {
+  const calls = [];
+  const result = runWorkflow(
+    "issue.hygiene",
+    ["--organization", "ALPHA", "--project", "MIGTEST01", "--overdue", "--stale-days", "30", "--without-parent"],
+    {
+      environment: { BACKLOG_API_ALLOWED_PERMISSIONS: "READ" },
+      runtime: RUNTIME,
+      now: () => new Date("2026-08-14T08:00:00.000Z"),
+      invokeRuntime: ({ operation, input, callOptions }) => {
+        calls.push({ operation, input, callOptions });
+        if (operation === "get_project") {
+          return {
+            operation,
+            success: true,
+            result: { id: 8192, projectKey: "MIGTEST01", name: "Migration test" },
+            diagnostics: []
+          };
+        }
+        if (operation === "get_issues") {
+          return {
+            operation,
+            success: true,
+            result: [
+              {
+                issueKey: "MIGTEST01-401",
+                summary: "Overdue and stale",
+                status: { id: 1, name: "未対応" },
+                dueDate: "2026-08-13",
+                parentIssueId: 10,
+                updated: "2026-07-01T00:00:00Z"
+              },
+              {
+                issueKey: "MIGTEST01-402",
+                summary: "Parent absent",
+                status: { id: 2, name: "処理中" },
+                dueDate: null,
+                parentIssueId: null,
+                updated: "2026-08-14T00:00:00Z"
+              },
+              {
+                issueKey: "MIGTEST01-403",
+                summary: "Closed and ignored",
+                status: { id: 4, name: "完了" },
+                dueDate: "2026-08-01",
+                parentIssueId: null,
+                updated: "2026-07-01T00:00:00Z"
+              }
+            ],
+            diagnostics: []
+          };
+        }
+        throw new Error(`unexpected operation: ${operation}`);
+      }
+    }
+  );
+
+  assert.equal(result.mutationInvoked, false);
+  assert.equal(result.issueCount, 2);
+  assert.deepEqual(result.issues, [
+    {
+      issueKey: "MIGTEST01-401",
+      summary: "Overdue and stale",
+      status: "未対応",
+      dueDate: "2026-08-13",
+      updated: "2026-07-01T00:00:00Z",
+      reasons: ["期限超過", "30日以上更新なし"]
+    },
+    {
+      issueKey: "MIGTEST01-402",
+      summary: "Parent absent",
+      status: "処理中",
+      dueDate: null,
+      updated: "2026-08-14T00:00:00Z",
+      reasons: ["親Issue未設定"]
+    }
+  ]);
+  assert.deepEqual(calls[1], {
+    operation: "get_issues",
+    input: {
+      organization: "ALPHA",
+      projectId: [8192],
+      fields: "{ issueKey summary status { id name } dueDate parentIssueId updated }",
+      sort: "updated",
+      order: "asc",
+      offset: 0,
+      count: 100
+    },
+    callOptions: ["--verbose"]
+  });
+});
+
+test("notification triage remains read-only and preserves unknown reason codes", () => {
+  const calls = [];
+  const result = runWorkflow("notification.triage", ["--organization", "ALPHA", "--unread", "--limit", "5"], {
+    environment: { BACKLOG_API_ALLOWED_PERMISSIONS: "READ" },
+    runtime: RUNTIME,
+    invokeRuntime: ({ operation, input, callOptions }) => {
+      calls.push({ operation, input, callOptions });
+      return {
+        operation,
+        success: true,
+        result: [
+          {
+            id: 77,
+            alreadyRead: false,
+            reason: 99,
+            resourceAlreadyRead: false,
+            created: "2026-08-14T00:00:00Z",
+            issue: { issueKey: "MIGTEST01-401" }
+          },
+          {
+            id: 76,
+            alreadyRead: true,
+            reason: 1,
+            resourceAlreadyRead: true,
+            created: "2026-08-13T00:00:00Z",
+            issue: null
+          }
+        ],
+        diagnostics: []
+      };
+    }
+  });
+  assert.equal(result.mutationInvoked, false);
+  assert.deepEqual(result.notifications, [{
+    id: 77,
+    alreadyRead: false,
+    reason: 99,
+    resourceAlreadyRead: false,
+    created: "2026-08-14T00:00:00Z",
+    issueKey: "MIGTEST01-401"
+  }]);
+  assert.match(result.humanOutput, /reason=99/);
+  assert.match(result.humanOutput, /推測でメンション扱いにしません/);
+  assert.deepEqual(calls, [{
+    operation: "get_notifications",
+    input: {
+      organization: "ALPHA",
+      count: 5,
+      order: "desc",
+      fields: "{ id alreadyRead reason resourceAlreadyRead created issue { issueKey } }"
+    },
+    callOptions: ["--verbose"]
+  }]);
 });
 
 test("incomplete issue list paginates internally, excludes closed issues, and sorts the concise result", () => {
@@ -427,6 +1236,229 @@ test("common issue search rejects an ambiguous resource name", () => {
     (error) => error instanceof BacklogSkillRunnerError
       && error.code === "SEARCH_REFERENCE_AMBIGUOUS"
   );
+});
+
+test("working context lists configured spaces without exposing credentials", () => {
+  const result = runWorkflow("context.list", [], {
+    environment: {
+      BACKLOG_ORG_ALPHA_DOMAIN: "alpha.backlog.com",
+      BACKLOG_ORG_ALPHA_API_KEY: "alpha-secret",
+      BACKLOG_ORG_BETA_DOMAIN: "beta.backlog.com"
+    }
+  });
+
+  assert.equal(result.status, "success");
+  assert.equal(result.mutationInvoked, false);
+  assert.deepEqual(result.spaces, [
+    { name: "ALPHA", configured: true },
+    { name: "BETA", configured: false }
+  ]);
+  assert.doesNotMatch(result.humanOutput, /backlog\.com|secret/i);
+});
+
+test("working context requires explicit persistence and scopes issue search", () => {
+  const workspace = createWorkspace();
+  const calls = [];
+  const session = "conversation-17";
+  const dependencies = {
+    cwd: workspace.cwd,
+    contextRoot: path.join(workspace.cwd, "contexts"),
+    environment: { BACKLOG_API_ALLOWED_PERMISSIONS: "READ" },
+    runtime: RUNTIME,
+    now: () => new Date("2026-08-14T00:00:00.000Z"),
+    invokeRuntime: ({ operation, input, callOptions }) => {
+      calls.push({ operation, input, callOptions });
+      if (operation === "get_project") {
+        return {
+          operation,
+          success: true,
+          result: { id: 8192, projectKey: "MIGTEST01", name: "Migration test" },
+          diagnostics: []
+        };
+      }
+      if (operation === "get_issues") {
+        return { operation, success: true, result: [], diagnostics: [] };
+      }
+      throw new Error(`unexpected operation: ${operation}`);
+    }
+  };
+
+  try {
+    assert.throws(
+      () => runWorkflow("context.select", ["--session", session, "--project", "MIGTEST01"], dependencies),
+      (error) => error instanceof BacklogSkillRunnerError
+        && error.code === "CONTEXT_PERSIST_PERMISSION_REQUIRED"
+    );
+    assert.equal(calls.length, 0);
+
+    const selected = runWorkflow(
+      "context.select",
+      ["--session", session, "--organization", "ALPHA", "--project", "MIGTEST01", "--persist"],
+      dependencies
+    );
+    assert.deepEqual(selected.context, {
+      organization: "ALPHA",
+      project: { id: 8192, key: "MIGTEST01", name: "Migration test" }
+    });
+    assert.equal(fs.statSync(path.join(workspace.cwd, selected.contextPath)).mode & 0o777, 0o600);
+
+    const searched = runWorkflow(
+      "issue.search",
+      ["--context-session", session, "--incomplete"],
+      dependencies
+    );
+    assert.equal(searched.organization, "ALPHA");
+    assert.deepEqual(searched.context, selected.context);
+    assert.deepEqual(calls.slice(1), [
+      {
+        operation: "get_project",
+        input: { organization: "ALPHA", projectKey: "MIGTEST01", fields: "{ id projectKey name }" },
+        callOptions: ["--verbose"]
+      },
+      {
+        operation: "get_issues",
+        input: {
+          organization: "ALPHA",
+          projectId: [8192],
+          fields: "{ issueKey summary status { id name } created updated }",
+          sort: "updated",
+          order: "desc",
+          offset: 0,
+          count: 100
+        },
+        callOptions: ["--verbose"]
+      }
+    ]);
+
+    const shown = runWorkflow("context.show", ["--session", session], dependencies);
+    assert.equal(shown.humanOutput, "現在の作業コンテキスト: 組織 ALPHA・プロジェクト MIGTEST01（Migration test）");
+    runWorkflow("context.clear", ["--session", session], dependencies);
+    assert.throws(
+      () => runWorkflow("context.show", ["--session", session], dependencies),
+      (error) => error instanceof BacklogSkillRunnerError && error.code === "CONTEXT_NOT_FOUND"
+    );
+  } finally {
+    workspace.cleanup();
+  }
+});
+
+test("working context blocks a delete preflight outside its selected project", () => {
+  const workspace = createWorkspace();
+  const session = "conversation-17";
+  const dependencies = {
+    cwd: workspace.cwd,
+    contextRoot: path.join(workspace.cwd, "contexts"),
+    environment: ENVIRONMENT,
+    runtime: RUNTIME,
+    now: fixedNow(),
+    invokeRuntime: ({ operation }) => {
+      if (operation === "get_project") {
+        return {
+          operation,
+          success: true,
+          result: { id: 9999, projectKey: "OTHER", name: "Other project" },
+          diagnostics: []
+        };
+      }
+      if (operation === "get_issue") {
+        return { operation, success: true, result: ISSUE, diagnostics: [] };
+      }
+      throw new Error(`unexpected operation: ${operation}`);
+    }
+  };
+
+  try {
+    runWorkflow(
+      "context.select",
+      ["--session", session, "--project", "OTHER", "--persist"],
+      dependencies
+    );
+    assert.throws(
+      () => runWorkflow(
+        "issue.delete.preflight",
+        ["--issue-key", ISSUE.issueKey, "--context-session", session],
+        dependencies
+      ),
+      (error) => error instanceof BacklogSkillRunnerError && error.code === "CONTEXT_PROJECT_MISMATCH"
+    );
+  } finally {
+    workspace.cleanup();
+  }
+});
+
+test("recent Issue history requires permission and reuses the exact recorded target", () => {
+  const workspace = createWorkspace();
+  const session = "conversation-8";
+  const calls = [];
+  const dependencies = {
+    cwd: workspace.cwd,
+    artifactRoot: workspace.artifactRoot,
+    recentIssueRoot: path.join(workspace.cwd, "recent-issues"),
+    environment: ENVIRONMENT,
+    runtime: RUNTIME,
+    now: fixedNow(),
+    createId: () => createId("9"),
+    invokeRuntime: ({ operation, input, callOptions }) => {
+      calls.push({ operation, input, callOptions });
+      if (operation === "get_issue") {
+        return { operation, success: true, result: ISSUE, diagnostics: [] };
+      }
+      if (operation === "get_project") {
+        return {
+          operation,
+          success: true,
+          result: { id: 8192, projectKey: "MIGTEST01", name: "Migration test" },
+          diagnostics: []
+        };
+      }
+      throw new Error(`unexpected operation: ${operation}`);
+    }
+  };
+
+  try {
+    assert.throws(
+      () => runWorkflow("issue.recent.record", ["--session", session, "--issue-key", ISSUE.issueKey], dependencies),
+      (error) => error instanceof BacklogSkillRunnerError
+        && error.code === "RECENT_ISSUE_PERSIST_PERMISSION_REQUIRED"
+    );
+    assert.equal(calls.length, 0);
+
+    const recorded = runWorkflow(
+      "issue.recent.record",
+      ["--session", session, "--issue-key", ISSUE.issueKey, "--persist"],
+      dependencies
+    );
+    assert.deepEqual(recorded.recentIssue, {
+      organization: "default",
+      project: { id: 8192, key: "MIGTEST01", name: "Migration test" },
+      issue: { id: ISSUE.id, key: ISSUE.issueKey },
+      recordedAt: "2026-08-01T00:00:00.000Z"
+    });
+    const storedHistory = fs.readFileSync(path.join(workspace.cwd, recorded.historyPath), "utf8");
+    assert.doesNotMatch(storedHistory, /Example issue|BACKLOG_API_KEY|test-secret/i);
+
+    const listed = runWorkflow("issue.recent.list", ["--session", session], dependencies);
+    assert.deepEqual(listed.recentIssues, [recorded.recentIssue]);
+
+    const preflight = runWorkflow(
+      "issue.delete.preflight",
+      ["--recent-issue-session", session],
+      dependencies
+    );
+    assert.match(
+      preflight.humanOutput,
+      /組織 default・プロジェクト MIGTEST01（Migration test）の MIGTEST01-392/
+    );
+    assert.deepEqual(preflight.recentIssue, recorded.recentIssue);
+
+    runWorkflow("issue.recent.clear", ["--session", session], dependencies);
+    assert.throws(
+      () => runWorkflow("issue.recent.list", ["--session", session], dependencies),
+      (error) => error instanceof BacklogSkillRunnerError && error.code === "RECENT_ISSUE_HISTORY_NOT_FOUND"
+    );
+  } finally {
+    workspace.cleanup();
+  }
 });
 
 test("single issue delete preflight and apply use two fixed runtime calls", () => {

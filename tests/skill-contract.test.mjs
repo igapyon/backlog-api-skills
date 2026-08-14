@@ -41,6 +41,8 @@ test("skill contract protects credentials and destructive operations", () => {
   assert.match(skill, /obtain a second, separate confirmation after\s+the mutation approval/i);
   assert.match(skill, /never treat one reply as\s+satisfying both approvals/i);
   assert.match(skill, /Pass `--confirm-destructive` only after the second confirmation/i);
+  assert.match(skill, /reset_unread_notification_count/);
+  assert.match(safety, /A broad reset similarly requires UPDATE approval and\s+then a separate destructive confirmation/i);
   assert.match(skill, /actual Backlog API call during the beta period/i);
   assert.match(skill, /Treat verbose stderr as transient diagnostics/i);
 });
@@ -55,6 +57,56 @@ test("skill provides guidance-only API key setup", () => {
   assert.match(skill, /do not repeat, transcribe, store,\s+or use it/i);
   assert.match(skill, /revoke that key and issue a replacement/i);
   assert.match(skill, /read-only `get_space`\s+connection test/i);
+  assert.match(skill, /Do not use a repository-root `\.env`, `\.env\.local`, or similar dotfile/i);
+});
+
+test("skill keeps working context session-scoped and credential-free", () => {
+  assert.match(skill, /## Session Working Context/);
+  assert.match(skill, /no operation that retains a current Backlog Space or\s+Project/i);
+  assert.match(skill, /explicitly permits local persistence/i);
+  assert.match(skill, /never stores domains or API keys/i);
+  assert.match(skill, /context\.select/);
+  assert.match(skill, /--persist/);
+  assert.match(skill, /--context-session SESSION/);
+  assert.match(requestRouting, /## Session Working Context/);
+  assert.match(requestRouting, /resolved Issue's project differs from the saved project/i);
+});
+
+test("skill protects opt-in recent Issue history", () => {
+  assert.match(skill, /## Recent Issue History/);
+  assert.match(skill, /explicitly permits it/i);
+  assert.match(skill, /never a title, description, response body, domain,\s+or API key/i);
+  assert.match(skill, /issue\.recent\.record/);
+  assert.match(skill, /issue\.recent\.list/);
+  assert.match(skill, /issue\.recent\.clear/);
+  assert.match(skill, /--recent-issue-session SESSION/);
+  assert.match(requestRouting, /## Recent Issue History/);
+});
+
+test("skill exports reviewed Issue tables through a fixed XLSX handoff", () => {
+  assert.match(skill, /## Reviewed XLSX Issue Export/);
+  assert.match(skill, /issue\.export\.xlsx\.preflight/);
+  assert.match(skill, /issue\.export\.xlsx\.apply --apply/);
+  assert.match(skill, /`--persist` permission/i);
+  assert.match(skill, /separate affirmative reply/i);
+  assert.match(skill, /converter checksum changes after preview/i);
+  assert.match(requestRouting, /## Reviewed XLSX Export/);
+  assert.match(requestRouting, /exactly one pending handoff/i);
+});
+
+test("skill updates one reviewed Issue only after snapshot revalidation", () => {
+  assert.match(skill, /## Fixed Single-Issue Update Route/);
+  assert.match(skill, /issue\.update\.preflight/);
+  assert.match(skill, /issue\.update\.apply --apply/);
+  assert.match(skill, /summary`, `description`, `dueDate`, `priority`, or `assignee`/);
+  assert.match(skill, /does not clear fields/i);
+  assert.match(skill, /canonical snapshot digest/i);
+  assert.match(requestRouting, /## Fixed Single-Issue Update/);
+  assert.match(requestRouting, /snapshot digest/i);
+  assert.match(requestRouting, /terminal\s+`conflict`/i);
+  assert.match(safety, /## Fixed Single-Issue Update Runner/);
+  assert.match(safety, /atomic lock/i);
+  assert.match(safety, /be retried automatically/i);
 });
 
 test("single-target deletion routes through the deterministic handoff runner", () => {

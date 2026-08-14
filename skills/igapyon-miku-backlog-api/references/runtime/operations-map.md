@@ -74,6 +74,46 @@ preserved from the checked upstream contract. Do not silently rename them.
 `remove_related_issue` is a destructive `DELETE` operation and requires the
 separate destructive confirmation gate.
 
+## Session Context Adapter
+
+Neither the checked runtime nor the checked upstream tool inventory exposes a
+current Space/Project operation. The Skill runner therefore adds only these
+local workflow operations:
+
+| Workflow | Effect | Permission boundary |
+| --- | --- | --- |
+| `context.list` | Lists configured Space labels without domains or keys | no Backlog call |
+| `context.select` | Resolves a Project and writes an opted-in session context | `READ` plus explicit `--persist` after user permission |
+| `context.show` | Displays the saved Space and Project | local read only |
+| `context.clear` | Removes the named saved context | explicit local clear |
+
+`issue.search`, `issue.list.incomplete`, and `issue.delete.preflight` can use
+`--context-session SESSION` in place of their normal organization/project
+arguments. The adapter supplies the saved scope. Delete preflight also confirms
+the resolved Issue belongs to the selected Project before it creates a deletion
+handoff or asks for final confirmation.
+
+## Recent Issue Adapter
+
+The local `issue.recent.record`, `issue.recent.list`, and `issue.recent.clear`
+workflows provide an opt-in newest-first Issue history for one Agent session.
+`record` requires `READ` plus `--persist` after explicit user permission; it
+resolves the Issue and Project before storing only their stable identifiers and
+labels. `list` and `clear` are local operations. Deletion preflight may consume
+the newest record through `--recent-issue-session SESSION`; it rereads the
+Issue and rejects a project mismatch before creating any handoff.
+
+## Fixed Issue Mutation Adapters
+
+`issue.create.preflight` / `issue.create.apply` provide one reviewed
+`add_issue` handoff. `issue.update.preflight` / `issue.update.apply` provide
+one reviewed `update_issue` handoff for summary, description, due date,
+priority, and assignee replacements. The update adapter uses `get_issue` at
+preflight and immediately before apply, `get_project` for the resolved scope,
+and catalog reads only when a priority or assignee name requires resolution.
+It compares a compact Issue snapshot digest before its one `update_issue` call;
+there is no status-name catalog or field-clearing contract in this adapter.
+
 ## Result Contract
 
 Read stdout as one JSON envelope. Report:

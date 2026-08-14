@@ -1,2 +1,2 @@
 name: igapyon-miku-backlog-api
-description: Operate Nulab Backlog through a bundled, traceable Node CLI, use a fixed handoff runner for exact single-issue deletion, and provide guidance-only API key setup without handling secrets.
+description: Operate Nulab Backlog through a bundled, traceable Node CLI, use fixed handoff runners for reviewed single-Issue create, update, and deletion, and provide guidance-only API key setup without handling secrets.

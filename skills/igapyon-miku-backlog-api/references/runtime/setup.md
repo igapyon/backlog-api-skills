@@ -76,6 +76,21 @@ printf '{}\n' | node --env-file=<agent-workspace>/workplace/backlog.env \
   call get_space --input - --verbose
 ```
 
+### `.env` Decision
+
+Do not use a repository-root `.env`, `.env.local`, or similar dotfile for
+Backlog credentials in this Skill. The supported local location is the
+credential-owning workspace's ignored `workplace/backlog.env` file. It makes
+the location, Git-exclusion rule, and owner-only permission expectation
+explicit, while keeping credentials outside both the installed Skill and the
+repository root.
+
+There is deliberately no tracked credential example file: even a blank
+root-level example would encourage placing a secret next to tracked source.
+Use the blank template above only in an approved local workspace file. When a
+key is rotated or exposed, revoke it in Backlog, issue a replacement, and
+replace the local value without reading, logging, or committing it.
+
 ## Agent Boundary
 
 - let the human or execution environment provide credentials
